@@ -632,5 +632,11 @@ async function exportKeepFormat(used){
 function fsOpen(id,open){$(id).classList.toggle('closed',!open)}
 document.querySelectorAll('fieldset.fold>legend').forEach(l=>l.onclick=()=>l.parentNode.classList.toggle('closed'));
 $('tsTog').onclick=()=>{setOpen=!setOpen;fsOpen('fsUp',true);renderSettings()};
+// 서버가 켜져 있는 동안 신호를 보냄 → 브라우저 탭을 닫으면 서버(exe)가 자동 종료됨
+if(location.protocol.startsWith('http')){
+ const tid=Math.random().toString(36).slice(2),ping=()=>fetch('/api/ping?id='+tid,{cache:'no-store'}).catch(()=>{});
+ ping();setInterval(ping,10000);
+ addEventListener('pagehide',()=>{try{navigator.sendBeacon('/api/bye?id='+tid)}catch(e){}});
+}
 function toast(m,c){const t=$('toast');t.textContent='💡 '+m;t.style.background=c;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600)}
 </script></body></html>

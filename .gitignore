@@ -4,6 +4,10 @@ node_modules/
 # 배포용 묶음 (node.exe 포함, 용량 큼) - 필요 시 담당자가 따로 전달
 deploy/
 
+# exe 빌드 결과물/중간 파일 (node build_exe.js 로 다시 만들 수 있음, 약 98MB)
+build/
+edi_log.txt
+
 # 심평원 마스터 내보내기 결과 (월 1회 생성, 용량 큼)
 *.tsv.gz
 *.tmp
