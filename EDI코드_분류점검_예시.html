@@ -1,68 +1,137 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>EDI코드 분류 점검 - 예시</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>EDI코드 분류 점검 v1.0</title>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/jszip.min.js"></script>
 <style>
+:root{--blue:#1f5fae;--blue-d:#174d91;--line:#cdd3dc;--soft:#f2f4f7}
 *{box-sizing:border-box}
-body{margin:0;font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:12px;color:#222;background:#e9ebef}
-.guide{max-width:1400px;margin:10px auto 8px;background:#fff;border-left:3px solid #334a8c;padding:8px 12px;line-height:1.7}
-.win{max-width:1400px;margin:0 auto 14px;background:#fff;border:1px solid #9aa0aa;position:relative}
-.top{background:#4a4f5c;color:#fff;font-weight:bold;font-style:italic;font-size:18px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center}
-.top span{font-style:normal;font-size:11px;font-weight:normal;border:1px solid #888;border-radius:12px;padding:2px 8px;background:#5d6270}
-.cond{background:#eef2f8;border:1px solid #d5dce8;margin:8px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.cond b{font-weight:bold}
+body{margin:0;font-family:"Malgun Gothic","맑은 고딕","Noto Sans KR",sans-serif;font-size:12px;color:#222;background:#d9dee5}
+.win{max-width:1800px;margin:0 auto;background:var(--soft);border:1px solid #98a2b0;position:relative;height:100vh;min-height:520px;display:flex;flex-direction:column}
+.title,.menubar,.foot,.status{flex:none}
+.main{flex:1 1 0;min-height:0;overflow:auto;display:flex;flex-direction:column;padding-bottom:6px}
+.main>*{flex:none}
+.main>.grid{flex:1 1 0}
+fieldset.fold>legend{cursor:pointer;user-select:none}
+fieldset.fold>legend::before{content:"▾ ";color:#667}
+fieldset.fold.closed>legend::before{content:"▸ "}
+fieldset.fold.closed>*:not(legend){display:none}
+fieldset.fold.closed{padding-bottom:2px;margin-top:8px}
+.title{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;background:#fff;border-bottom:1px solid #dde1e7;font-size:14px}
+.title .ico{width:22px;height:22px;border-radius:5px;background:var(--blue);color:#fff;font-weight:bold;display:flex;align-items:center;justify-content:center;font-size:13px}
+.title small{color:#777;font-size:12px}
+.menubar{display:flex;background:#fff;border-bottom:1px solid #dde1e7;padding:0 8px;position:relative;z-index:50}
+.mn{padding:8px 12px;cursor:default;user-select:none}
+.mn:hover,.mn.open{background:#e8eef8}
+#mdd{position:absolute;top:100%;background:#fff;border:1px solid #b9c0cb;box-shadow:0 4px 12px rgba(0,0,0,.18);min-width:230px;padding:3px 0;display:none}
+#mdd div{padding:6px 18px;cursor:default;white-space:nowrap}
+#mdd div:hover{background:#e8eef8}
+#mdd div.dis{color:#aaa}
+#mdd hr{border:none;border-top:1px solid #e3e6ea;margin:3px 0}
+.guide{margin:10px 12px 0;background:#fff;border-left:3px solid var(--blue);padding:8px 12px;line-height:1.7;display:none}
+fieldset{border:1px solid var(--line);border-radius:3px;margin:12px 12px 0;padding:6px 12px 10px;background:#fff;min-width:0}
+legend{color:var(--blue);font-weight:bold;padding:0 6px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .grp{display:flex;align-items:center;gap:6px}
-.sep{width:1px;height:20px;background:#c9d1de}
-select,input[type=text]{font-family:inherit;font-size:12px;height:24px;border:1px solid #aab;padding:0 4px;background:#fff}
-.file{display:inline-flex;align-items:center;border:1px solid #aab;background:#fff;height:24px;min-width:220px;padding:0 6px;color:#888;overflow:hidden;white-space:nowrap}
-.btn{height:26px;padding:0 12px;border:none;border-radius:2px;color:#fff;font-family:inherit;font-size:12px;cursor:pointer;background:#5b6fb5}
-.btn.red{background:#ef5a4c}.btn.sky{background:#1d93c9}.btn.gray{background:#8a93a3}.btn.or{background:#f04a1e}
-.btn:disabled{background:#d5d8dd;color:#8a8f98;cursor:not-allowed}
+.grp b{font-weight:normal;color:#333}
+.sep{width:1px;height:20px;background:#d5dae2}
+select,input[type=text],input[type=password]{font-family:inherit;font-size:12px;height:26px;border:1px solid #b9c0cb;border-radius:2px;padding:0 6px;background:#fff}
+select:focus,input:focus{outline:1px solid #6d9bd8;border-color:#6d9bd8}
+.file{display:inline-flex;align-items:center;border:1px solid #b9c0cb;border-radius:2px;background:#fff;height:26px;flex:1;min-width:260px;max-width:520px;padding:0 8px;color:#888;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.btn{height:26px;padding:0 14px;border:1px solid #b9c0cb;border-radius:3px;color:#222;font-family:inherit;font-size:12px;cursor:pointer;background:linear-gradient(#fff,#eceff3);white-space:nowrap}
+.btn:hover{background:linear-gradient(#fff,#e2e8f1);border-color:#9fb0c8}
+.btn.pri{background:var(--blue);border-color:var(--blue-d);color:#fff;font-weight:bold}
+.btn.pri:hover{background:var(--blue-d)}
+.btn:disabled,.btn.pri:disabled{background:#eceef1;border-color:#d5d9df;color:#a0a6af;cursor:not-allowed;font-weight:normal}
 .req{color:#e02020}
-.sum{display:flex;gap:8px;align-items:center;margin:0 8px 8px;flex-wrap:wrap}
-.chip{border:1px solid #d5dce8;border-radius:14px;padding:3px 12px;cursor:pointer;background:#fff;user-select:none}
-.chip b{margin-left:4px}
-.chip.on{border-color:#334a8c;background:#334a8c;color:#fff}
-.chip.ok b{color:#2f7d3a}.chip.ng b{color:#c0392b}.chip.na b{color:#a86b00}.chip.un b{color:#6b4fbf}
+#tabset{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px dashed #d5dae2}
+#tabset .grp b{font-weight:normal}
+#tabset input.empty{border-color:#e02020;background:#fff6f6}
+.sum{display:flex;gap:6px;align-items:center;margin:12px 12px 8px;flex-wrap:wrap}
+.chip{border:1px solid #c5ccd7;border-radius:3px;padding:5px 14px;cursor:pointer;background:#fff;user-select:none}
+.chip:hover{border-color:#8fa6c8}
+.chip b{margin-left:6px}
+.chip.on{border-color:var(--blue);background:var(--blue);color:#fff}
+.chip.ok b{color:#2f7d3a}.chip.ng b{color:#4a5b78}.chip.na b{color:#a86b00}.chip.un b{color:#6b4fbf}
 .chip.on b{color:#fff}
-.bulk{margin-left:auto;display:flex;gap:6px;align-items:center}
-.grid{margin:0 8px;border:1px solid #ccc;height:440px;overflow:auto}
+.bulk{margin-left:auto;display:flex;gap:8px;align-items:center}
+.srch{margin:0 12px 6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.srch input{width:300px}
+.grid{margin:0 12px;border:1px solid var(--line);background:#fff;min-height:240px;overflow:auto}
 table{border-collapse:collapse;width:100%;table-layout:fixed}
-th{background:#f0f1f3;font-weight:normal;padding:6px 4px;border-bottom:1px solid #ccc;border-right:1px solid #e3e3e3;white-space:nowrap;position:sticky;top:0;z-index:1}
-th.grpA{background:#e8edf6}th.grpH{background:#e6f3ee}th.grpF{background:#fff1d6;font-weight:bold}
-td{padding:5px 6px;border-bottom:1px solid #eee;border-right:1px solid #f2f2f2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+th{background:linear-gradient(#fbfcfd,#eef0f4);font-weight:bold;color:#333;padding:8px 6px;border-bottom:2px solid #c3c9d3;border-right:1px solid #e1e5eb;white-space:nowrap;position:sticky;top:0;z-index:1}
+th.grpA{border-bottom-color:#5b8cd0}th.grpH{border-bottom-color:#5bb069}th.grpF{border-bottom-color:#f3a31b}
+td{padding:7px 8px;border-bottom:1px solid #eef0f3;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 td.l{text-align:left}
-tr.ng td{background:#fff6f5}tr.na td{background:#fffaf0}
-tr.dirty td.fin{background:#fff3c4}
+tbody tr:hover td{background:#f3f7fd}
+tbody tr.na td{background:#fff8ec}
+tbody tr.dirty td.fin{background:#fff1b8}
+tbody tr.sel td{background:#dde9fb}
+tbody tr.dragsel td{background:#c6dbf8}
+body.dragging,body.dragging *{user-select:none!important;cursor:default}
 .b{display:inline-block;padding:1px 8px;border-radius:2px;font-size:11px}
-.b-ok{background:#e3f1e5;color:#2f7d3a}.b-ng{background:#fde6e3;color:#c0392b}.b-na{background:#fff1d6;color:#a86b00}.b-wait{background:#eee;color:#777}
+.b-ok{background:#e3f1e5;color:#2f7d3a}.b-ng{background:#e9edf4;color:#4a5b78}.b-na{background:#fff1d6;color:#a86b00}.b-wait{background:#eee;color:#777}
 .cls{font-weight:bold}.c약제{color:#2b55a8}.c행위{color:#2f7d3a}.c치료재료{color:#a85a00}
-td.fin select{width:100%;height:22px}
+td.fin select{width:100%;height:24px;background:#fff}
 td.fin select.empty{border-color:#e02020;color:#e02020}
-.empty-msg{padding:60px 0;color:#999;text-align:center}
-.foot{display:flex;justify-content:space-between;align-items:center;padding:8px;border-top:1px solid #ddd;margin-top:8px;background:#f5f5f5}
-.foot .r{display:flex;gap:4px;align-items:center}
-.saved{color:#2f7d3a;margin-right:8px}
-.toast{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);background:#5cad5c;color:#fff;padding:9px 20px;display:none;z-index:40;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-.load{position:absolute;inset:0;background:rgba(255,255,255,.65);display:none;align-items:center;justify-content:center;z-index:30;font-weight:bold;color:#334a8c;font-size:13px}
-.legend{margin:6px 8px 0;color:#666;font-size:11px}
+td.fin select.f약제{color:#2b55a8;background:#e6eefb;border-color:#2b55a8;font-weight:bold}
+td.fin select.f행위{color:#2f7d3a;background:#e5f4e8;border-color:#2f7d3a;font-weight:bold}
+td.fin select.f치료재료{color:#a85a00;background:#fdeed9;border-color:#c77a1a;font-weight:bold}
+td.fin select option{color:#222;background:#fff;font-weight:normal}
+.empty-msg{padding:70px 0;color:#999;text-align:center}
+th.so{cursor:pointer;user-select:none}
+th.so:hover{background:#e3e8ef}
+th.so::after{content:'↕';color:#bbb;margin-left:4px;font-size:10px}
+th.so.asc::after{content:'▲';color:var(--blue)}
+th.so.desc::after{content:'▼';color:var(--blue)}
+.pager{margin:6px 12px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:#555}
+.pager button{height:24px;min-width:28px;border:1px solid #b9c0cb;border-radius:2px;background:#fff;cursor:pointer;font-family:inherit}
+.pager button:disabled{color:#ccc;cursor:default}
+#stabs{margin:0 12px;background:#e9ecf1;border:1px solid var(--line);border-top:none;padding:0 6px;white-space:nowrap;overflow-x:auto}
+#stabs .st{display:inline-block;padding:6px 18px;border:1px solid #c9ccd2;border-top:none;background:#dfe3e9;cursor:pointer;margin:0 2px;border-radius:0 0 5px 5px;user-select:none}
+#stabs .st:hover{background:#eef0f3}
+#stabs .st.on{background:#fff;font-weight:bold;color:#1d6b3a;border-bottom:3px solid #217346}
+#stabs .st.off{color:#aaa;text-decoration:line-through}
+#stabs .st small{color:#888;font-weight:normal;margin-left:4px}
+#stabs .st i{font-style:normal;background:#6b4fbf;color:#fff;border-radius:9px;padding:0 6px;font-size:10px;margin-left:5px}
+.pvt{table-layout:auto;width:auto;min-width:100%}
+.pvt th{white-space:nowrap}
+.pvt td{max-width:260px}
+.pvh{padding:6px 8px;color:#666;font-size:11px;background:#fafafa;border-bottom:1px solid #eee}
+.legend{margin:6px 12px 0;color:#666;font-size:11px}
+.foot{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 10px}
+.foot .r{display:flex;gap:6px;align-items:center}
+.status{margin-top:auto;display:flex;align-items:center;gap:10px;padding:5px 14px;background:#fff;border-top:1px solid #dde1e7;color:#444}
+.status i{width:1px;height:14px;background:#d5dae2}
+.status .sp{flex:1}
+#sv:empty::before{content:'● 저장 안 됨';color:#d9363e}
+#sv:not(:empty){color:#2f7d3a}
+.toast{position:absolute;left:50%;bottom:70px;transform:translateX(-50%);background:#5cad5c;color:#fff;padding:9px 20px;display:none;z-index:60;box-shadow:0 2px 8px rgba(0,0,0,.25);border-radius:3px}
+.load{position:absolute;inset:0;background:rgba(255,255,255,.7);display:none;align-items:center;justify-content:center;z-index:55;font-weight:bold;color:var(--blue);font-size:14px}
 </style></head><body>
-<div class="guide"><b>시연 방법</b> : ① <b>[샘플 불러오기]</b>를 누르거나 엑셀 파일 선택 후 열 지정(EDI코드 열 필수) → <b>[업로드]</b> → ② <b>[심평원 점검]</b> → AS-IS 분류와 심평원 분류의 일치 여부 표시 → ③ 행마다 <b>최종 분류</b> 콤보 선택 (불일치·미등재 건은 '선택' 상태로 시작) → ④ <b>[저장]</b> → ⑤ <b>[엑셀 다운로드]</b><br>
-※ 예시 화면의 심평원 분류는 가상 데이터입니다. 실제로는 심평원 행위·약제·치료재료 기준 마스터와 EDI코드를 대조합니다. AS-IS 분류 열을 지정하지 않으면 EDI코드 체계(9자리 숫자=약제 등)로 AS-IS 분류를 판정합니다.</div>
 <div class="win">
-<div class="top">EDI코드 분류 점검<span>닫기</span></div>
+<div class="title"><span class="ico">E</span>EDI코드 분류 점검 <small>v1.0</small></div>
+<div class="menubar" id="menubar"><span class="mn" data-m="file">파일(F)</span><span class="mn" data-m="chk">점검(C)</span><span class="mn" data-m="tool">도구(T)</span><span class="mn" data-m="help">도움말(H)</span><div id="mdd"></div></div>
+<div class="main">
+<div class="guide" id="guide"><b>사용 방법</b> : ① <b>[업로드]</b> 영역에서 엑셀 파일을 선택(또는 [샘플 불러오기])하고, 탭마다 <b>수가코드·EDI코드·수가명·AS-IS 분류의 열 이름</b>을 지정 → <b>[업로드]</b> → ② <b>[심평원 점검]</b> → AS-IS 분류와 심평원 분류의 일치 여부 표시 → ③ 행마다 <b>최종 분류</b> 선택 (불일치·미등재 건은 '선택' 상태로 시작) → ④ <b>[저장]</b> → ⑤ <b>[점검결과 엑셀 다운로드]</b><br>
+· 표에서 <b>마우스로 드래그</b>하면 지나간 행이 선택됩니다 (Ctrl을 누르고 드래그하면 기존 선택에 추가). 선택한 행은 <b>[일괄 변경]</b>으로 최종 분류를 한 번에 바꿀 수 있습니다.<br>
+· 심평원 마스터는 <b>도구 → 심평원 마스터 파일 선택</b> 또는 <b>DB 직접 조회</b>로 불러옵니다. 샘플의 심평원 분류는 가상 데이터입니다.</div>
 
-<div class="cond">
- <div class="grp"><b>파일</b><span class="file" id="fname">엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)</span><input type="file" id="fi" accept=".xlsx,.xls,.csv" hidden><button class="btn gray" id="pick">찾기</button><label><input type="checkbox" id="hdr" checked> 첫 행 제목</label></div>
- <div class="sep"></div>
- <div class="grp"><b>EDI코드<span class="req">*</span></b><select id="cE"></select><b>수가코드</b><select id="cS"></select><b>수가명</b><select id="cN"></select><b>AS-IS 분류</b><select id="cA"></select></div>
- <div class="sep"></div>
- <div class="grp"><button class="btn" id="up">업로드</button><button class="btn gray" id="sample">샘플 불러오기</button><button class="btn red" id="chk" disabled>심평원 점검</button></div>
-</div>
+<fieldset class="fold" id="fsUp"><legend>파일 업로드</legend>
+ <div class="row">
+  <div class="grp" style="flex:1;max-width:660px"><b>파일</b><span class="file" id="fname">엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)</span><input type="file" id="fi" accept=".xlsx,.xls,.csv" hidden><button class="btn" id="pick">📂 찾기</button></div>
+  <div class="sep"></div>
+  <div class="grp"><button class="btn" id="up">⬆ 업로드</button><button class="btn" id="sample">샘플 불러오기</button><button class="btn pri" id="chk" disabled>▶ 심평원 점검</button><button class="btn" id="tsTog" style="display:none" title="탭별 수가코드·EDI코드·수가명·AS-IS 분류 열 설정 보기/숨기기">열 설정 ▸</button></div>
+ </div>
+ <div id="tabset" style="display:none"></div>
+</fieldset>
 
-<div class="cond">
- <div class="grp"><b>심평원 수가마스터</b><span class="file" id="mfname">마스터 파일을 선택하세요 (.tsv.gz 권장 / .xlsx)</span><input type="file" id="mfi" accept=".xlsx,.xls,.csv,.gz" hidden><button class="btn gray" id="mpick">찾기</button><label><input type="checkbox" id="mhdr" checked> 첫 행 제목</label></div>
- <div class="sep"></div>
- <div class="grp"><b>EDI코드<span class="req">*</span></b><select id="mE"></select><b>명칭</b><select id="mN"></select><b>분류</b><select id="mC"></select><button class="btn" id="mup">마스터 적용</button><span id="mstat" style="color:#888">마스터 미적용</span></div>
-</div>
+<fieldset class="fold" id="fsMa"><legend>심평원 수가마스터</legend>
+ <div class="row">
+  <div class="grp" style="flex:1;max-width:660px"><b>파일</b><span class="file" id="mfname">마스터 파일을 선택하세요 (.tsv.gz)</span><input type="file" id="mfi" accept=".gz" hidden><button class="btn" id="mpick">📂 찾기</button></div>
+  <div class="sep"></div>
+  <div class="grp"><button class="btn" id="dbtog">DB 직접 조회 ▸</button></div>
+  <div class="grp" id="dbpanel" style="display:none"><span id="dbhost" style="color:#888">(서버 미연결)</span><input type="text" id="dbu" placeholder="DB ID" style="width:100px" autocomplete="off"><input type="password" id="dbp" placeholder="PW" style="width:100px" autocomplete="new-password"><button class="btn pri" id="dbget">DB에서 가져오기</button><a id="dbsave" style="display:none;color:#1d6fa5;cursor:pointer;text-decoration:underline">파일로 저장</a></div>
+ </div>
+</fieldset>
 
 <div class="sum" id="sum">
  <span class="chip on" data-f="all">전체<b id="nAll">0</b></span>
@@ -70,16 +139,24 @@ td.fin select.empty{border-color:#e02020;color:#e02020}
  <span class="chip ng" data-f="ng">불일치<b id="nNg">0</b></span>
  <span class="chip na" data-f="na">심평원 미등재<b id="nNa">0</b></span>
  <span class="chip un" data-f="un">최종 미선택<b id="nUn">0</b></span>
- <div class="bulk">선택 행 최종 분류 <select id="bv"><option value="">선택</option><option>약제</option><option>행위</option><option>치료재료</option></select><button class="btn" id="bApply">일괄 변경</button><button class="btn sky" id="bHira">불일치 → 심평원 분류 일괄 적용</button></div>
+ <div class="bulk"><span title="전체: 선택한 행의 최종 분류를 각 행의 심평원 분류로 / 행위·약제·치료재료: 심평원 분류와 상관없이 최종 분류를 그 값으로">일괄변경 대상</span> <select id="bv"><option>행위</option><option>약제</option><option>치료재료</option><option selected>전체</option></select><button class="btn" id="bApply">일괄 변경</button></div>
 </div>
 
-<div class="grid"><table>
+<div class="srch" id="srch" style="display:none">검색
+ <select id="sc"><option value="all">전체 열</option><option value="sg">수가코드</option><option value="edi">EDI코드</option><option value="nm">수가명</option><option value="asis">AS-IS 분류</option><option value="hira">심평원 분류</option><option value="hnm">심평원 명칭</option><option value="res">점검결과</option><option value="fin">최종 분류</option><option value="note">비고</option></select>
+ <input type="text" id="sq" placeholder="검색어 (포함 검색 / % 여러 글자 · _ 한 글자)" autocomplete="off"><button class="btn" id="sx">지우기</button><span id="scnt" style="color:var(--blue)"></span></div>
+<div class="grid" id="gMain"><table>
 <colgroup><col style="width:34px"><col style="width:46px"><col style="width:110px"><col style="width:110px"><col><col style="width:90px"><col style="width:90px"><col style="width:220px"><col style="width:90px"><col style="width:120px"><col style="width:120px"></colgroup>
-<thead><tr><th><input type="checkbox" id="ca"></th><th>No</th><th class="grpA">수가코드</th><th class="grpA">EDI코드</th><th class="grpA">수가명</th><th class="grpA">AS-IS 분류</th><th class="grpH">심평원 분류</th><th class="grpH">심평원 명칭</th><th>점검결과</th><th class="grpF">최종 분류</th><th>비고</th></tr></thead>
+<thead><tr><th><input type="checkbox" id="ca" title="필터·검색된 전체 행(모든 페이지) 선택"></th><th class="so" data-k="no">No</th><th class="grpA so" data-k="sg">수가코드</th><th class="grpA so" data-k="edi">EDI코드</th><th class="grpA so" data-k="nm">수가명</th><th class="grpA so" data-k="asis">AS-IS 분류</th><th class="grpH so" data-k="hira">심평원 분류</th><th class="grpH so" data-k="hnm">심평원 명칭</th><th class="so" data-k="res">점검결과</th><th class="grpF so" data-k="fin">최종 분류</th><th class="so" data-k="note">비고</th></tr></thead>
 <tbody id="tb"><tr><td colspan="11" class="empty-msg">AS-IS 수가코드 엑셀을 업로드하세요.</td></tr></tbody></table></div>
-<div class="legend">파란 머리줄 = AS-IS 업로드 값 · 초록 머리줄 = 심평원 대조 결과 · 노란 칸 = 저장 전 변경된 최종 분류</div>
+<div class="grid" id="gPrev" style="display:none"></div>
+<div class="pager" id="pager" style="display:none"></div>
+<div id="stabs" style="display:none"></div>
+<div class="legend">파란 머리줄 = AS-IS 업로드 값 · 초록 머리줄 = 심평원 대조 결과 · 주황 배경 = 심평원 미등재 · 노란 칸 = 저장 전 변경 · 표를 드래그하면 행 선택</div>
 
-<div class="foot"><div class="r"><button class="btn" id="x1" disabled>① 수가 분류 엑셀 출력</button><button class="btn red" id="x2" disabled>② 마스터 미존재 수가 엑셀 출력</button><button class="btn" id="dl" disabled>점검결과 엑셀 다운로드</button></div><div class="r"><span class="saved" id="sv"></span><button class="btn gray" id="rs">초기화</button><button class="btn or" id="save" disabled>저장</button></div></div>
+</div>
+<div class="foot"><div class="r"><button class="btn" id="dl" disabled>📤 점검결과 엑셀 다운로드</button><button class="btn" id="x2" disabled>마스터 미존재 수가 엑셀 출력</button></div><div class="r"><button class="btn" id="rs">초기화</button><button class="btn pri" id="save" disabled>💾 저장</button></div></div>
+<div class="status"><span id="sbFile">파일 없음</span><i></i><span id="sbCnt">0건</span><i></i><span id="sbChk">점검 전</span><i></i><span id="sv"></span><span class="sp"></span><span id="mstat" style="color:#888">심평원 마스터 미적용</span></div>
 <div class="load" id="load">심평원 기준 데이터 대조 중...</div>
 <div class="toast" id="toast"></div>
 </div>
@@ -88,12 +165,6 @@ td.fin select.empty{border-color:#e02020;color:#e02020}
 const $=id=>document.getElementById(id);
 const CL=['약제','행위','치료재료'];
 const COLS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-function optHtml(n,def,allowNone){return (allowNone?'<option value="">미지정</option>':'')+COLS.slice(0,Math.min(26,Math.max(n,4))).map(c=>`<option ${c===def?'selected':''}>${c}</option>`).join('')}
-function fillCols(n){
-  $('cE').innerHTML=optHtml(n,'A');$('cS').innerHTML=optHtml(n,'B',1);$('cN').innerHTML=optHtml(n,'C',1);$('cA').innerHTML=optHtml(n,'D',1);
-}
-function fillM(n){$('mE').innerHTML=optHtml(n,'A');$('mN').innerHTML=optHtml(n,'B',1);$('mC').innerHTML=optHtml(n,'',1)}
-fillCols(4);fillM(4);
 const nc=v=>String(v??'').trim().toUpperCase();
 function normCls(a){a=String(a??'').trim();
  if(['약','약제','약/주사','의약품','약가'].includes(a))return '약제';
@@ -128,6 +199,7 @@ const SAMPLE=[
  ['699999999','OWN-DRUG','원내 조제약','약제'],         // 미등재
 ];
 let rows=[],checked=false,filter='all',savedSnap=null;
+let sortKey='',sortDir=1,q='',qcol='all',page=0,pageSize=200; // 정렬·검색·페이지 상태
 
 function guessAsis(edi){ // AS-IS 분류 열 미지정 시 코드 체계 판정
  if(/^\d{9}$/.test(edi))return '약제';
@@ -135,56 +207,116 @@ function guessAsis(edi){ // AS-IS 분류 열 미지정 시 코드 체계 판정
  if(/^[A-Z]{1,2}\d{3,5}$/.test(edi))return '행위';
  return '';
 }
-function load(aoa,name){
- const ci=c=>c?COLS.indexOf(c):-1;
- const iE=ci($('cE').value),iS=ci($('cS').value),iN=ci($('cN').value),iA=ci($('cA').value);
- const data=$('hdr').checked?aoa.slice(1):aoa;
- ncols=aoa.reduce((m,r)=>Math.max(m,(r||[]).length),0);hdrRow=$('hdr').checked?aoa[0]:null;
- rows=data.filter(r=>r&&r.some(v=>v!==''&&v!=null)).map((r,i)=>{
-   const edi=nc(r[iE]);
-   let a=iA>=0?normCls(r[iA]):'';
-   return {raw:r,no:i+1,sg:iS>=0?String(r[iS]??''):'',edi,nm:iN>=0?String(r[iN]??''):'',asis:a||guessAsis(edi),asisGuess:!a,hira:null,hnm:'',res:'wait',fin:'',saved:''};
- });
- rowsVer++;checked=false;savedSnap=null;$('fname').textContent=name;$('fname').style.color='#222';
- $('chk').disabled=!rows.length;$('save').disabled=true;$('dl').disabled=true;$('sv').textContent='';$('x1').disabled=$('x2').disabled=!rows.length;
- render();toast(`${rows.length}건 업로드 완료 — [심평원 점검]을 눌러주세요.`,'#334a8c');
+// ---- 탭(시트)별 화면 + 열 이름 지정 ----
+// 엑셀 시트처럼 하단 탭으로 전환. 탭마다 1행(제목)에 적힌 열 이름을 입력해 EDI코드·수가코드·수가명·AS-IS 분류 열을 지정
+let sheets=[],curTab=0,setOpen=true; // setOpen: 탭별 열 설정 표시 여부 (업로드 후에는 숨김) // sheets: {name,aoa,hi,heads,ncols,use,nE,nS,nN,nA}  (n* = 해당 탭의 열 이름)
+const nonEmpty=r=>r&&r.some(v=>v!==''&&v!=null);
+const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const normH=v=>String(v??'').replace(/\s+/g,'').toLowerCase();
+const findCol=(s,name)=>{const t=normH(name);return t?s.heads.findIndex(h=>normH(h)===t):-1};
+const FIELDS=[['nE','EDI코드',true],['nS','수가코드',false],['nN','수가명',false],['nA','AS-IS 분류',false]];
+const view=()=>{const s=sheets[curTab];return s?rows.filter(r=>r.sh===s):rows};
+function guessName(s,re,not){for(const h of s.heads){const t=String(h??'').trim();if(t&&re.test(t)&&!(not&&not.test(t)))return t}return ''}
+function autoDetect(s){ // 제목 글자로 초기값 추정 (사용자가 수정 가능)
+ s.nE=guessName(s,/edi/i)||guessName(s,/코드/,/수가|처방/);
+ s.nA=guessName(s,/분류/);s.nS=guessName(s,/수가.*코드|처방.*코드/);s.nN=guessName(s,/수가명|처방명|명칭|^명$/);
 }
-$('sample').onclick=()=>{fillCols(4);$('hdr').checked=true;
+function setSheets(list){
+ sheets=list.map(x=>{const hi=Math.max(0,x.aoa.findIndex(nonEmpty));const heads=(x.aoa[hi]||[]).map(v=>String(v??'').trim());
+  const ncols=x.aoa.reduce((m,r)=>Math.max(m,(r||[]).length),0);
+  const s={name:x.name,aoa:x.aoa,r0:x.r0||0,c0:x.c0||0,hi,heads,ncols,use:x.aoa.filter(nonEmpty).length>1,nE:'',nS:'',nN:'',nA:''};autoDetect(s);return s});
+ curTab=Math.max(0,sheets.findIndex(s=>s.use));
+ rows=[];page=0;checked=false;savedSnap=null;filter='all';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));
+ $('chk').disabled=$('save').disabled=$('dl').disabled=$('x2').disabled=true;$('sv').textContent='';
+ setOpen=true;fsOpen('fsUp',true);renderSettings();render();
+}
+const badField=(s,k)=>k==='nE'?(s.use&&findCol(s,s[k])<0):(s[k]!==''&&findCol(s,s[k])<0);
+function renderSettings(){
+ const s=sheets[curTab];$('tsTog').style.display=sheets.length?'':'none';$('tsTog').textContent='열 설정 '+(setOpen?'▾':'▸');$('tabset').style.display=(s&&setOpen)?'':'none';if(!s||!setOpen){renderPreview();return}
+ const inp=(k,ph)=>`<input type="text" list="dlh" data-k="${k}" value="${esc(s[k])}" placeholder="${ph}" class="${badField(s,k)?'empty':''}" style="width:150px" autocomplete="off">`;
+ $('tabset').innerHTML=`<div class="grp"><b>[${esc(s.name)}] 탭 설정</b><label><input type="checkbox" data-k="use" ${s.use?'checked':''}> 이 탭 사용</label></div><div class="sep"></div>
+ <div class="grp"><b>EDI코드<span class="req">*</span></b>${inp('nE','열 이름 (필수)')}<b>수가코드</b>${inp('nS','미지정')}<b>수가명</b>${inp('nN','미지정')}<b>AS-IS 분류</b>${inp('nA','미지정')}</div>
+ <div class="grp"><button class="btn gray" data-act="all">모든 탭에 같은 열 이름 적용</button></div>
+ <datalist id="dlh">${s.heads.filter(Boolean).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+ <div style="width:100%;color:#777;font-size:11px">열 이름은 이 탭 1행(제목)의 글자와 같아야 합니다 (입력칸을 누르면 제목 목록이 나옵니다). 열 이름을 바꾸면 [업로드]를 다시 누르세요.</div>`;
+ renderPreview();
+}
+$('tabset').onchange=e=>{const t=e.target,s=sheets[curTab],k=t.dataset.k;if(!s||!k)return;
+ if(k==='use'){s.use=t.checked;renderSettings();renderTabBar()}
+ else{s[k]=t.value.trim();t.classList.toggle('empty',badField(s,k));renderPreview()}};
+$('tabset').onclick=e=>{if(e.target.dataset.act==='all'&&sheets.length){const f=sheets[curTab];sheets.forEach(s=>{if(s!==f)FIELDS.forEach(([k])=>s[k]=f[k])});renderTabBar();toast('이 탭의 열 이름을 모든 탭에 적용했습니다. 없는 열 이름은 [업로드] 때 안내됩니다.','#334a8c')}};
+function renderPreview(){ // 업로드 전(또는 사용 안 하는 탭): 원본 데이터 미리보기. 지정한 열은 제목에 표시
+ const g=$('gPrev'),s=sheets[curTab];
+ if(!s){g.innerHTML='<div class="empty-msg">AS-IS 수가코드 엑셀을 선택하거나 [샘플 불러오기]를 누르세요.</div>';return}
+ const tag=i=>FIELDS.filter(([k])=>s[k]&&findCol(s,s[k])===i).map(([k,l])=>`<span class="b b-ok" style="margin-left:4px">${l}</span>`).join('');
+ const data=s.aoa.slice(s.hi+1).filter(nonEmpty);const cols=Array.from({length:s.ncols},(_,i)=>i);
+ g.innerHTML=`<div class="pvh">${s.use?'':'⚠ 이 탭은 사용하지 않습니다 · '}미리보기 (최대 100행 / 전체 ${data.length.toLocaleString()}행) — 지정한 열은 제목 옆에 표시됩니다. 설정 후 [업로드]를 누르세요.</div>
+ <table class="pvt"><thead><tr><th style="width:40px">#</th>${cols.map(i=>`<th>${esc(s.heads[i]||'열 '+(COLS[i]||i+1))}${tag(i)}</th>`).join('')}</tr></thead>
+ <tbody>${data.slice(0,100).map((r,n)=>`<tr><td>${n+1}</td>${cols.map(i=>`<td class="l" title="${esc(r[i])}">${esc(r[i])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+function renderTabBar(){
+ $('stabs').style.display=sheets.length?'':'none';
+ $('stabs').innerHTML=sheets.map((s,i)=>{const rs=rows.filter(r=>r.sh===s);const bad=checked?rs.filter(r=>!r.fin).length:0;
+  return `<span class="st ${i===curTab?'on':''} ${s.use?'':'off'}" data-i="${i}" title="${s.use?'':'사용 안 함'}">${esc(s.name)}<small>${rs.length?rs.length.toLocaleString():''}</small>${bad?`<i title="최종 미선택 ${bad}건">${bad}</i>`:''}</span>`}).join('');
+}
+$('stabs').onclick=e=>{const t=e.target.closest('.st');if(!t)return;curTab=+t.dataset.i;filter='all';page=0;
+ document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));renderSettings();render()};
+function load(name){
+ const use=sheets.filter(s=>s.use);
+ if(!use.length){toast('사용할 탭을 선택하세요.','#888');return}
+ const errs=[];
+ use.forEach(s=>{s.ix={};FIELDS.forEach(([k,label,req])=>{const v=s[k],i=findCol(s,v);
+  if(req&&!v)errs.push(`[${s.name}] ${label} 열 이름을 입력하세요`);
+  else if(v&&i<0)errs.push(`[${s.name}] '${v}' 열을 찾을 수 없습니다`);
+  s.ix[k]=i})});
+ if(errs.length){ // 문제가 있는 첫 탭으로 이동해서 빨간 입력칸을 보여줌
+  const first=sheets.findIndex(s=>use.includes(s)&&FIELDS.some(([k])=>badField(s,k)));if(first>=0)curTab=first;
+  toast(errs.slice(0,3).join(' / ')+(errs.length>3?` 외 ${errs.length-3}건`:''),'#c0392b');setOpen=true;fsOpen('fsUp',true);renderSettings();render();return}
+ rows=[];
+ use.forEach(s=>{let no=0;
+  s.aoa.forEach((r,ri)=>{if(ri<=s.hi)return;
+   if(!nonEmpty(r))return;
+   const edi=nc(r[s.ix.nE]);const a=s.ix.nA>=0?normCls(r[s.ix.nA]):'';
+   rows.push({raw:r,ri,idx:rows.length,sh:s,tab:s.name,no:++no,sg:s.ix.nS>=0?String(r[s.ix.nS]??''):'',edi,nm:s.ix.nN>=0?String(r[s.ix.nN]??''):'',asis:a||guessAsis(edi),asisGuess:!a,hira:null,hnm:'',res:'wait',fin:'',saved:''});
+  })});
+ if(!rows.length){toast('선택한 탭에 데이터 행이 없습니다.','#c0392b');return}
+ if(!view().length)curTab=sheets.indexOf(use[0]);
+ rowsVer++;page=0;checked=false;savedSnap=null;filter='all';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));
+ if(name){$('fname').textContent=name;$('fname').style.color='#222'}
+ $('chk').disabled=false;$('save').disabled=true;$('dl').disabled=true;$('sv').textContent='';$('x2').disabled=false;
+ setOpen=false;fsOpen('fsUp',false);if(masterMap||masterFile)fsOpen('fsMa',false); // 업로드 후: 설정/입력 영역을 접어 표 영역을 넓힘
+ renderSettings();render();toast(`${use.length}개 탭, 총 ${rows.length}건 업로드 완료 — [심평원 점검]을 눌러주세요.`,'#334a8c');
+}
+const SAMPLE2=[['분류명','EDI코드','수가명'],['약제','643300040','가바렙캡슐300mg'],['행위','AA154','초진진찰료(추가)'],['행위','641702920','놀텍정10mg(분류오류)']];
+$('sample').onclick=()=>{origBuf=null;origIsXlsx=false;
+ setSheets([{name:'수가목록',aoa:SAMPLE},{name:'추가목록',aoa:SAMPLE2}]);
  masterFile=null;masterMap=new Map(Object.entries(HIRA));$('mstat').textContent=`샘플 마스터(가상) ${masterMap.size}건 사용 중`;$('mstat').style.color='#2f7d3a';
- load(SAMPLE,'AS-IS_수가코드_샘플.xlsx')};
+ load('AS-IS_수가코드_샘플.xlsx (탭 2개)')};
 // ---- 마스터 파일 업로드 ----
 $('mpick').onclick=()=>$('mfi').click();
-$('mfi').onchange=()=>{const f=$('mfi').files[0];if(f){$('mfname').textContent=f.name;$('mfname').style.color='#222';
- window._mgz=/\.gz$/i.test(f.name)?f:null;if(window._mgz){window._maoa=null;return}
- if(typeof XLSX==='undefined')return;
- const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
-  fillM((aoa[0]||[]).length);window._maoa=aoa};rd.readAsArrayBuffer(f)}};
-$('mup').onclick=async()=>{
- if(window._mgz){ // 압축 마스터 파일(.tsv.gz)
-  masterFile=window._mgz;masterMap=null;masterSig='';
-  const h=await masterHead(masterFile);
-  if(!h){$('mstat').textContent='마스터 파일 형식 오류 (export_master.js로 만든 .tsv.gz인지 확인)';$('mstat').style.color='#c0392b';masterFile=null;return}
-  const days=Math.floor((Date.now()-new Date(h.date))/864e5);
-  $('mstat').textContent=`마스터 기준일 ${h.date} · ${(+h.count).toLocaleString()}건`+(days>35?` ⚠ ${days}일 경과 — 최신 파일 확인`:'');
-  $('mstat').style.color=days>35?'#c0392b':'#2f7d3a';
-  toast('마스터 파일을 지정했습니다. 점검 시 업로드 코드와 대조합니다.','#334a8c');
-  if(rows.length&&checked)$('chk').click();
-  return}
- if(!window._maoa){toast('심평원 수가마스터 파일(.xlsx 또는 .tsv.gz)을 먼저 선택하세요.','#888');return}
- const iE=COLS.indexOf($('mE').value),iN=$('mN').value?COLS.indexOf($('mN').value):-1,iC=$('mC').value?COLS.indexOf($('mC').value):-1;
- const data=$('mhdr').checked?window._maoa.slice(1):window._maoa;const m=new Map();
- data.forEach(r=>{const k=nc(r[iE]);if(k&&!m.has(k))m.set(k,[iC>=0?normCls(r[iC]):'',iN>=0?String(r[iN]??''):''])});
- masterFile=null;masterMap=m;$('mstat').textContent=`마스터 ${m.size.toLocaleString()}건 적용${iC<0?' (분류 열 미지정: 존재 여부만 비교)':''}`;$('mstat').style.color='#2f7d3a';
- if(rows.length&&checked){$('chk').click()}
- toast(`심평원 마스터 ${m.size.toLocaleString()}건을 적용했습니다.`,'#334a8c')};
+$('mfi').onchange=async()=>{const f=$('mfi').files[0];if(!f)return;
+ $('mfi').value=''; // 같은 파일을 다시 선택해도 동작하도록
+ if(!/\.gz$/i.test(f.name)){toast('마스터 파일은 export_master.js 로 만든 .tsv.gz 파일만 사용할 수 있습니다.','#c0392b');return}
+ const h=await masterHead(f); // 선택 즉시 적용 (열 지정 불필요: 형식이 고정됨)
+ if(!h){$('mstat').textContent='마스터 파일 형식 오류 (export_master.js로 만든 .tsv.gz인지 확인)';$('mstat').style.color='#c0392b';return}
+ masterFile=f;masterMap=null;masterSig='';
+ $('mfname').textContent=f.name;$('mfname').style.color='#222';
+ showMasterStat(h);
+ toast('마스터 파일을 적용했습니다. 점검 시 업로드 코드와 대조합니다.','#334a8c');
+ if(rows.length&&checked)$('chk').click()};
 $('pick').onclick=()=>$('fi').click();
-$('fi').onchange=()=>{const f=$('fi').files[0];if(f){$('fname').textContent=f.name;$('fname').style.color='#222'}};
-$('up').onclick=()=>{
- const f=$('fi').files[0];if(!f){toast('파일을 선택하거나 [샘플 불러오기]를 이용하세요.','#888');return}
+$('fi').onchange=()=>{const f=$('fi').files[0];if(!f)return;$('fname').textContent=f.name;$('fname').style.color='#222';
  if(typeof XLSX==='undefined'){toast('엑셀 라이브러리를 불러오지 못했습니다. [샘플 불러오기]로 확인해 주세요.','#c0392b');return}
- const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
-  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});fillCols((aoa[0]||[]).length);load(aoa,f.name)};rd.readAsArrayBuffer(f);
-};
+ const rd=new FileReader();rd.onload=e=>{
+  try{origBuf=e.target.result;origIsXlsx=/\.xlsx$/i.test(f.name)&&new Uint8Array(origBuf,0,2)[0]===0x50;
+   const wb=XLSX.read(origBuf,{type:'array'});
+   setSheets(wb.SheetNames.map(n=>{const ws=wb.Sheets[n],rg=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0}};return{name:n,aoa:XLSX.utils.sheet_to_json(ws,{header:1,defval:''}),r0:rg.s.r,c0:rg.s.c}}));
+   toast(`${wb.SheetNames.length}개 탭을 읽었습니다. 탭별 열 이름을 확인한 뒤 [업로드]를 누르세요.`,'#334a8c')}
+  catch(err){toast('엑셀 파일을 읽지 못했습니다: '+err.message,'#c0392b')}};
+ rd.readAsArrayBuffer(f)};
+$('up').onclick=()=>{
+ if(!sheets.length){toast('파일을 선택하거나 [샘플 불러오기]를 이용하세요.','#888');return}
+ load($('fname').textContent)};
 $('chk').onclick=async()=>{
  if(!await buildMaster()){toast('심평원 수가마스터를 먼저 업로드(또는 샘플 불러오기)하세요.','#c0392b');return}
  $('load').style.display='flex';
@@ -195,49 +327,96 @@ $('chk').onclick=async()=>{
    else if(!h[0]){r.hira='';r.hnm=h[1];r.res='ok';r.note='마스터 분류 없음(존재만 확인)'}
    else{r.hira=h[0];r.hnm=h[1];r.res=(r.asis===h[0])?'ok':'ng';r.note=r.res==='ng'?'AS-IS '+(r.asis||'-')+' → 심평원 '+h[0]:''}
    if(r.asisGuess&&r.asis)r.note=(r.note?r.note+' · ':'')+'AS-IS 코드체계 판정';
-   r.fin=r.res==='ok'?(r.hira||r.asis):'';
+   r.fin=r.res==='ok'?(r.hira||(CL.includes(r.asis)?r.asis:'')):'';
   });
-  checked=true;savedSnap=rows.map(r=>r.fin);savedSnap=null;$('save').disabled=false;$('dl').disabled=false;render();
-  const c=cnt();toast(`점검 완료 — 일치 ${c.ok}건 / 불일치 ${c.ng}건 / 미등재 ${c.na}건`,'#5cad5c');
+  checked=true;chkTime=new Date();savedSnap=rows.map(r=>r.fin);savedSnap=null;$('save').disabled=false;$('dl').disabled=false;render();
+  const c=cnt(true);toast(`점검 완료 — 일치 ${c.ok}건 / 불일치 ${c.ng}건 / 미등재 ${c.na}건`,'#5cad5c');
  },700);
 };
-function cnt(){return{all:rows.length,ok:rows.filter(r=>r.res==='ok').length,ng:rows.filter(r=>r.res==='ng').length,na:rows.filter(r=>r.res==='na').length,un:checked?rows.filter(r=>!r.fin).length:0}}
+function cnt(g){const v=g?rows:view();return{all:v.length,ok:v.filter(r=>r.res==='ok').length,ng:v.filter(r=>r.res==='ng').length,na:v.filter(r=>r.res==='na').length,un:checked?v.filter(r=>!r.fin).length:0}}
 const BADGE={ok:'<span class="b b-ok">일치</span>',ng:'<span class="b b-ng">불일치</span>',na:'<span class="b b-na">미등재</span>',wait:'<span class="b b-wait">점검 전</span>'};
 const cls=v=>v?`<span class="cls c${v}">${v}</span>`:'<span style="color:#bbb">-</span>';
+const RESL={ok:'일치',ng:'불일치',na:'미등재',wait:'점검 전'};
+const RANK={ng:0,na:1,ok:2,wait:3};
+const GET={no:r=>r.no,sg:r=>r.sg,edi:r=>r.edi,nm:r=>r.nm,asis:r=>r.asis||'',hira:r=>checked?(r.hira||''):'',hnm:r=>r.hnm||'',res:r=>RESL[r.res],fin:r=>r.fin||'',note:r=>r.note||''};
+const SEARCH_ALL=['sg','edi','nm','asis','hira','hnm','res','fin','note'];
+const COLL=new Intl.Collator('ko',{numeric:true,sensitivity:'base'});
+// LIKE 검색: % 또는 _ 가 없으면 '포함', 있으면 SQL LIKE 처럼 전체 일치 패턴 (대소문자 무시)
+function likeRe(q){const hasW=/[%_]/.test(q);let s=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');if(hasW)s='^'+s.replace(/%/g,'.*').replace(/_/g,'.')+'$';return new RegExp(s,'i')}
+function getList(){ // 현재 탭 → 칩 필터 → 검색 → 정렬
+ let v=view();
+ if(filter!=='all')v=v.filter(r=>filter==='un'?(checked&&!r.fin):r.res===filter);
+ if(q){const re=likeRe(q);v=qcol==='all'?v.filter(r=>SEARCH_ALL.some(k=>re.test(GET[k](r)))):v.filter(r=>re.test(GET[qcol](r)))}
+ if(sortKey){const g=GET[sortKey],d=sortDir;
+  if(sortKey==='no')v=v.slice().sort((a,b)=>(a.no-b.no)*d);
+  else if(sortKey==='res')v=v.slice().sort((a,b)=>(RANK[a.res]-RANK[b.res])*d);
+  else v=v.slice().sort((a,b)=>{const x=g(a),y=g(b);if(x===y)return 0;if(!x)return 1;if(!y)return -1;return COLL.compare(x,y)*d})}
+ return v;
+}
+function renderPager(total,pages){
+ const p=$('pager'),a=total?page*pageSize+1:0,b=Math.min(total,(page+1)*pageSize);
+ p.style.display='';
+ p.innerHTML=`<button data-p="first" ${page===0?'disabled':''}>«</button><button data-p="prev" ${page===0?'disabled':''}>‹</button><b>${page+1} / ${pages}</b><button data-p="next" ${page>=pages-1?'disabled':''}>›</button><button data-p="last" ${page>=pages-1?'disabled':''}>»</button>
+ <span>${total.toLocaleString()}건 중 ${a.toLocaleString()}~${b.toLocaleString()}</span><span style="margin-left:10px">페이지당</span><select id="ps">${[100,200,500,1000].map(n=>`<option ${n===pageSize?'selected':''}>${n}</option>`).join('')}</select>`;
+}
 function render(){
  const c=cnt();$('nAll').textContent=c.all;$('nOk').textContent=c.ok;$('nNg').textContent=c.ng;$('nNa').textContent=c.na;$('nUn').textContent=c.un;
- const list=rows.filter(r=>filter==='all'||(filter==='un'?(checked&&!r.fin):r.res===filter));
- if(!rows.length){$('tb').innerHTML='<tr><td colspan="11" class="empty-msg">AS-IS 수가코드 엑셀을 업로드하세요.</td></tr>';return}
- if(!list.length){$('tb').innerHTML='<tr><td colspan="11" class="empty-msg">해당하는 행이 없습니다.</td></tr>';return}
- $('tb').innerHTML=list.map(r=>{const i=rows.indexOf(r);const dirty=checked&&savedSnap&&savedSnap[i]!==r.fin;
-  return `<tr class="${r.res==='ng'?'ng':r.res==='na'?'na':''} ${dirty?'dirty':''}"><td><input type="checkbox" class="rc" data-i="${i}" ${r.sel?'checked':''}></td><td>${r.no}</td><td>${r.sg}</td><td>${r.edi}</td><td class="l" title="${r.nm}">${r.nm}</td>
-  <td>${cls(r.asis)}${r.asisGuess&&r.asis?'<sup style="color:#999">*</sup>':''}</td><td>${checked?cls(r.hira):''}</td><td class="l" title="${r.hnm}">${r.hnm}</td><td>${BADGE[r.res]}</td>
-  <td class="fin"><select class="fs ${checked&&!r.fin?'empty':''}" data-i="${i}" ${checked?'':'disabled'}><option value="">선택</option>${CL.map(o=>`<option ${r.fin===o?'selected':''}>${o}</option>`).join('')}</select></td>
-  <td class="l" title="${r.note||''}" style="color:#777;font-size:11px">${r.note||''}</td></tr>`}).join('');
- document.querySelectorAll('.fs').forEach(s=>s.onchange=()=>{rows[s.dataset.i].fin=s.value;$('sv').textContent='';render()});
- document.querySelectorAll('.rc').forEach(c=>c.onchange=()=>rows[c.dataset.i].sel=c.checked);
+ const pv=view().length===0;$('gMain').style.display=pv?'none':'';$('gPrev').style.display=pv?'':'none';$('srch').style.display=pv?'none':'flex';renderTabBar();
+ if(pv){$('pager').style.display='none';renderPreview();return}
+ document.querySelectorAll('#gMain th.so').forEach(t=>{t.classList.toggle('asc',t.dataset.k===sortKey&&sortDir===1);t.classList.toggle('desc',t.dataset.k===sortKey&&sortDir===-1)});
+ const list=getList(),total=list.length,pages=Math.max(1,Math.ceil(total/pageSize));
+ if(page>=pages)page=pages-1;if(page<0)page=0;
+ $('scnt').textContent=q?`검색 결과 ${total.toLocaleString()}건`:'';
+ $('ca').checked=total>0&&list.every(r=>r.sel);
+ if(!total){$('tb').innerHTML='<tr><td colspan="11" class="empty-msg">해당하는 행이 없습니다.</td></tr>';renderPager(0,1);return}
+ $('tb').innerHTML=list.slice(page*pageSize,(page+1)*pageSize).map(r=>{const i=r.idx;const dirty=checked&&savedSnap&&savedSnap[i]!==r.fin;
+  return `<tr class="${r.res==='ng'?'ng':r.res==='na'?'na':''} ${dirty?'dirty':''} ${r.sel?'sel':''}"><td><input type="checkbox" class="rc" data-i="${i}" ${r.sel?'checked':''}></td><td>${r.no}</td><td>${esc(r.sg)}</td><td>${esc(r.edi)}</td><td class="l" title="${esc(r.nm)}">${esc(r.nm)}</td>
+  <td>${cls(r.asis)}${r.asisGuess&&r.asis?'<sup style="color:#999">*</sup>':''}</td><td>${checked?cls(r.hira):''}</td><td class="l" title="${esc(r.hnm)}">${esc(r.hnm)}</td><td>${BADGE[r.res]}</td>
+  <td class="fin"><select class="fs ${checked&&!r.fin?'empty':''} ${r.fin?'f'+r.fin:''}" data-i="${i}" ${checked?'':'disabled'}><option value="">선택</option>${CL.map(o=>`<option ${r.fin===o?'selected':''}>${o}</option>`).join('')}</select></td>
+  <td class="l" title="${esc(r.note)}" style="color:#777;font-size:11px">${esc(r.note)}</td></tr>`}).join('');
+ renderPager(total,pages);
 }
-document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{filter=ch.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===ch));render()});
-$('ca').onchange=e=>{const vis=[...document.querySelectorAll('.rc')].map(c=>+c.dataset.i);vis.forEach(i=>rows[i].sel=e.target.checked);render()};
+// 이벤트 위임 (행마다 핸들러를 붙이지 않음 → 대량 데이터에서도 가벼움)
+$('tb').onchange=e=>{const t=e.target,i=+t.dataset.i;
+ if(t.classList.contains('fs')){rows[i].fin=t.value;$('sv').textContent='';render()}
+ else if(t.classList.contains('rc')){rows[i].sel=t.checked;t.closest('tr').classList.toggle('sel',t.checked)}};
+$('pager').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const n=Math.max(1,Math.ceil(getList().length/pageSize));
+ page=b.dataset.p==='first'?0:b.dataset.p==='prev'?page-1:b.dataset.p==='next'?page+1:n-1;render();$('gMain').scrollTop=0};
+$('pager').onchange=e=>{if(e.target.id==='ps'){pageSize=+e.target.value;page=0;render()}};
+document.querySelector('#gMain thead').onclick=e=>{const t=e.target.closest('th.so');if(!t)return;const k=t.dataset.k;
+ if(sortKey!==k){sortKey=k;sortDir=1}else if(sortDir===1)sortDir=-1;else{sortKey='';sortDir=1}
+ page=0;render()};
+let _qt;$('sq').oninput=()=>{clearTimeout(_qt);_qt=setTimeout(()=>{q=$('sq').value.trim();page=0;render()},250)};
+$('sc').onchange=()=>{qcol=$('sc').value;page=0;render()};
+$('sx').onclick=()=>{$('sq').value='';q='';page=0;render()};
+document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{filter=ch.dataset.f;page=0;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===ch));render()});
+$('ca').onchange=e=>{const l=getList();l.forEach(r=>r.sel=e.target.checked);render();if(e.target.checked)toast(`${l.length.toLocaleString()}건 선택 (모든 페이지)`,'#334a8c')};
 $('bApply').onclick=()=>{if(!checked){toast('[심평원 점검] 후 사용할 수 있습니다.','#888');return}const v=$('bv').value;const t=rows.filter(r=>r.sel);
- if(!t.length||!v){toast('행을 체크하고 변경할 분류를 선택하세요.','#888');return}t.forEach(r=>{r.fin=v;r.sel=false});$('ca').checked=false;$('sv').textContent='';render();toast(`${t.length}건 최종 분류를 '${v}'(으)로 변경했습니다.`,'#334a8c')};
-$('bHira').onclick=()=>{if(!checked){toast('[심평원 점검] 후 사용할 수 있습니다.','#888');return}const t=rows.filter(r=>r.res==='ng');t.forEach(r=>r.fin=r.hira);$('sv').textContent='';render();toast(`불일치 ${t.length}건에 심평원 분류를 적용했습니다.`,'#334a8c')};
+ if(!t.length){toast('일괄 변경할 행을 체크하세요.','#888');return}
+ // 전체: 각 행의 심평원 분류를 최종 분류로 / 행위·약제·치료재료: 심평원 분류와 상관없이 그 값으로
+ let n=0,skip=0;
+ t.forEach(r=>{if(v==='전체'){if(r.hira){r.fin=r.hira;n++}else skip++}else{r.fin=v;n++}r.sel=false});
+ $('ca').checked=false;$('sv').textContent='';render();
+ toast(v==='전체'?`${n}건에 각 행의 심평원 분류를 최종 분류로 반영했습니다.`+(skip?` (심평원 분류가 없는 ${skip}건은 제외)`:''):`${n}건 최종 분류를 '${v}'(으)로 변경했습니다.`,n?'#334a8c':'#888')};
 $('save').onclick=()=>{const un=rows.filter(r=>!r.fin).length;
- if(un){toast(`최종 분류 미선택 ${un}건이 있습니다. 모두 선택 후 저장하세요.`,'#c0392b');filter='un';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='un'));render();return}
+ if(un){toast(`최종 분류 미선택 ${un}건이 있습니다. 모두 선택 후 저장하세요.`,'#c0392b');const f0=rows.find(r=>!r.fin);if(f0)curTab=sheets.indexOf(f0.sh);filter='un';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='un'));renderSettings();render();return}
  savedSnap=rows.map(r=>r.fin);const t=new Date();rows.forEach(r=>r.saved='Y');
  $('sv').textContent=`저장 완료 ${t.toLocaleString('ko-KR',{hour12:false})}`;render();toast(`${rows.length}건 저장되었습니다.`,'#5cad5c')};
-$('rs').onclick=()=>{rows=[];checked=false;savedSnap=null;filter='all';$('fname').textContent='엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)';$('fname').style.color='#888';$('fi').value='';
- $('chk').disabled=$('save').disabled=$('dl').disabled=$('x1').disabled=$('x2').disabled=true;$('sv').textContent='';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));render()};
-$('dl').onclick=()=>{
- const head=['No','수가코드','EDI코드','수가명','AS-IS 분류','심평원 분류','심평원 명칭','점검결과','최종 분류','비고','저장여부'];
- const RES={ok:'일치',ng:'불일치',na:'미등재',wait:'점검 전'};
- const body=rows.map(r=>[r.no,r.sg,r.edi,r.nm,r.asis,r.hira||'',r.hnm,RES[r.res],r.fin,r.note||'',savedSnap&&savedSnap[rows.indexOf(r)]===r.fin&&r.saved?'Y':'N']);
- const fn='EDI코드_분류점검_'+new Date().toISOString().slice(0,10).replace(/-/g,'');
- if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([head,...body]);ws['!cols']=[6,12,12,28,10,10,24,10,10,30,8].map(w=>({wch:w}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'분류점검');XLSX.writeFile(wb,fn+'.xlsx')}
- else{const csv='﻿'+[head,...body].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=fn+'.csv';a.click()}
- toast('엑셀 파일을 다운로드했습니다.','#334a8c')};
+$('rs').onclick=()=>{rows=[];sheets=[];curTab=0;setOpen=true;fsOpen('fsUp',true);fsOpen('fsMa',true);$('tsTog').style.display='none';$('tabset').style.display='none';$('stabs').style.display='none';checked=false;savedSnap=null;filter='all';$('fname').textContent='엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)';$('fname').style.color='#888';$('fi').value='';
+ $('chk').disabled=$('save').disabled=$('dl').disabled=$('x2').disabled=true;$('sv').textContent='';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));render()};
+$('dl').onclick=async()=>{ // 원본 엑셀 구조 그대로: 모든 탭 출력, '이 탭 사용' 탭에만 마지막 열 오른쪽에 '최종 분류' 열 추가
+ const used=new Set(usedSheets()),fn='EDI코드_분류점검_'+today();
+ let blob=null;try{blob=await exportKeepFormat(used)}catch(e){console.warn('서식 유지 출력 실패',e)}
+ if(blob){saveBlob(blob,fn+'.xlsx');toast(`원본 서식 그대로 다운로드 (최종 분류 추가 ${used.size}개 탭 · 원본 그대로 ${sheets.length-used.size}개 탭)`,'#334a8c');return}
+ // 대체 경로(.xls/.csv/샘플 등): 값만 복사 — 서식은 유지되지 않음
+ const parts=sheets.map(s=>{
+  if(!used.has(s))return {name:s.name,aoa:s.aoa};
+  const fin=new Map(rows.filter(r=>r.sh===s).map(r=>[r.ri,r.fin||''])),col=s.ncols;
+  const pad=row=>Array.from({length:col},(_,c)=>(row||[])[c]??'');
+  return {name:s.name,aoa:s.aoa.map((row,i)=>i===s.hi?[...pad(row),'최종 분류']:fin.has(i)?[...pad(row),fin.get(i)]:row)};
+ });
+ saveBook(parts,fn);
+ toast(`원본 ${parts.length}개 탭 다운로드 (이 파일 형식은 서식 유지 불가: 값만 복사됨)`,'#a86b00')};
 // ---- 압축 마스터(.tsv.gz) 읽기: 스트리밍 해제하며 업로드 코드와 일치하는 행만 보관 ----
 async function openLines(file,onLine){
  const rd=file.stream().pipeThrough(new DecompressionStream('gzip')).pipeThrough(new TextDecoderStream()).getReader();
@@ -253,6 +432,35 @@ async function masterHead(file){
  try{await openLines(file,l=>{const a=l.split('\t');if(a[0]==='#MASTER')h={date:a[1],count:a[2]};return false})}catch(e){return null}
  return h;
 }
+function showMasterStat(h){
+ const days=Math.floor((Date.now()-new Date(h.date))/864e5);
+ $('mstat').textContent=`마스터 기준일 ${h.date} · ${(+h.count).toLocaleString()}건`+(days>35?` ⚠ ${days}일 경과 — 최신 파일 확인`:'');
+ $('mstat').style.color=days>35?'#c0392b':'#2f7d3a';
+}
+// ---- DB 직접 조회: server.js 가 ID/PW 로 MySQL 에 접속해 마스터를 내려줌 ----
+if(location.protocol.startsWith('http'))fetch('/api/info').then(r=>r.json()).then(j=>{$('dbhost').textContent='DB '+j.host;$('dbhost').style.color='#2f7d3a'}).catch(()=>{});
+$('dbtog').onclick=()=>{const p=$('dbpanel'),open=p.style.display==='none';p.style.display=open?'':'none';$('dbtog').textContent='DB 직접 조회 '+(open?'▾':'▸')};
+$('dbget').onclick=async()=>{
+ if(!location.protocol.startsWith('http')){toast('DB 조회는 server.js 를 실행한 뒤 http://localhost:3000 으로 접속해야 합니다.','#c0392b');return}
+ const u=$('dbu').value.trim(),p=$('dbp').value;
+ if(!u||!p){toast('DB ID와 비밀번호를 입력하세요.','#888');return}
+ const ld=$('load'),old=ld.textContent;ld.textContent='DB에서 수가마스터를 가져오는 중... (수 분 걸릴 수 있습니다)';ld.style.display='flex';$('dbget').disabled=true;
+ try{
+  const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,password:p})});
+  if(!res.ok){const j=await res.json().catch(()=>({}));throw new Error(j.error||('서버 오류 '+res.status))}
+  const blob=await res.blob();
+  const f=new File([blob],'master_db.tsv.gz');const h=await masterHead(f);
+  if(!h)throw new Error('받은 마스터 파일을 읽지 못했습니다.');
+  masterFile=f;masterMap=null;masterSig='';
+  $('mfname').textContent=`DB에서 가져옴 (${(blob.size/1048576).toFixed(1)}MB)`;$('mfname').style.color='#222';
+  showMasterStat(h);
+  const a=$('dbsave');if(a._u)URL.revokeObjectURL(a._u);a._u=URL.createObjectURL(blob);a.href=a._u;a.download='master_'+h.date.replace(/-/g,'')+'.tsv.gz';a.style.display='';
+  $('dbp').value='';
+  toast(`마스터 ${(+h.count).toLocaleString()}건을 가져왔습니다.`,'#5cad5c');
+  if(rows.length&&checked)$('chk').click();
+ }catch(e){toast(e.message,'#c0392b')}
+ finally{ld.style.display='none';ld.textContent=old;$('dbget').disabled=false}
+};
 async function buildMaster(){
  if(!masterFile)return !!masterMap;
  const sig=masterFile.name+':'+masterFile.size+':'+rowsVer;
@@ -271,37 +479,158 @@ async function buildMaster(){
  ld.style.display='none';ld.textContent=old;
  masterMap=m;masterSig=sig;return true;
 }
-// ---- 기능1: 엣지 분류 기준으로 분류 후 엑셀 출력 ----
-// 우선순위: 사용자 최종 분류 > 심평원 마스터 분류 > 병원 제공 분류 > 코드체계 추정
-function classify(r){
- if(r.fin)return [r.fin,'최종 분류(확정)'];
- const h=lookup(r.edi);
- if(h&&h[0])return [h[0],'심평원 마스터'];
- if(r.asis&&!r.asisGuess)return [r.asis,'병원 제공 분류'];
- const g=guessAsis(r.edi);if(g)return [g,'EDI코드 체계 추정'];
- return ['미분류','분류 근거 없음'];
-}
-function saveXlsx(head,body,fn,sheet,widths){
- if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([head,...body]);if(widths)ws['!cols']=widths.map(w=>({wch:w}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,fn+'.xlsx')}
- else{const csv='﻿'+[head,...body].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+// parts: [{name,head,body}] — 탭마다 시트 1개로 출력 (CSV 대체 시에는 탭을 이어 붙임)
+function saveBook(parts,fn){
+ if(typeof XLSX!=='undefined'){const wb=XLSX.utils.book_new(),used=new Set();
+  parts.forEach(p=>{let b=String(p.name).replace(/[\\\/?*\[\]:]/g,'_').slice(0,31)||'Sheet',x=b,k=2;while(used.has(x))x=b.slice(0,28)+'_'+k++;used.add(x);
+   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(p.aoa||[p.head,...p.body]),x)});
+  XLSX.writeFile(wb,fn+'.xlsx')}
+ else{const q=r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  const csv='﻿'+parts.map(p=>[['## 탭: '+p.name],...(p.aoa||[p.head,...p.body])].map(q).join('\n')).join('\n\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=fn+'.csv';a.click()}
 }
 const today=()=>new Date().toISOString().slice(0,10).replace(/-/g,'');
-const origHead=()=>Array.from({length:ncols},(_,i)=>hdrRow&&hdrRow[i]!==undefined&&hdrRow[i]!==''?hdrRow[i]:'열 '+COLS[i]);
-const origRow=r=>Array.from({length:ncols},(_,i)=>r.raw[i]??'');
-$('x1').onclick=async()=>{
- await buildMaster();
- const body=rows.map(r=>{const [c,why]=classify(r);return [...origRow(r),c,why]});
- const un=body.filter(b=>b[ncols]==='미분류').length;
- saveXlsx([...origHead(),'엣지 분류','분류 근거'],body,'수가분류_'+today(),'수가분류');
- toast(`분류 ${rows.length}건 출력 (미분류 ${un}건)`,un?'#a86b00':'#334a8c')};
+const sHead=s=>Array.from({length:s.ncols},(_,i)=>s.heads[i]||'열 '+(COLS[i]||i+1));
+const sRow=r=>Array.from({length:r.sh.ncols},(_,i)=>r.raw[i]??'');
+const usedSheets=()=>sheets.filter(s=>s.use&&rows.some(r=>r.sh===s));
 // ---- 기능2: 심평원 마스터에 없는 수가만 추출 ----
 $('x2').onclick=async()=>{
  if(!await buildMaster()){toast('심평원 수가마스터를 먼저 업로드(또는 샘플 불러오기)하세요.','#c0392b');return}
  const miss=rows.filter(r=>!r.edi||!lookup(r.edi));
  if(!miss.length){toast('마스터에 없는 수가가 없습니다. (전체 '+rows.length+'건 존재)','#5cad5c');return}
- saveXlsx([...origHead(),'사유'],miss.map(r=>[...origRow(r),r.edi?'심평원 마스터 미존재':'EDI코드 없음']),'심평원_미존재수가_'+today(),'미존재수가');
- toast(`마스터 미존재 ${miss.length}건 / 전체 ${rows.length}건을 출력했습니다.`,'#334a8c')};
+ const parts=usedSheets().map(s=>({name:s.name,head:[...sHead(s),'사유'],
+  body:miss.filter(r=>r.sh===s).map(r=>[...sRow(r),r.edi?'심평원 마스터 미존재':'EDI코드 없음'])})).filter(p=>p.body.length);
+ saveBook(parts,'심평원_미존재수가_'+today());
+ toast(`마스터 미존재 ${miss.length}건 / 전체 ${rows.length}건을 출력했습니다. (${parts.length}개 탭)`,'#334a8c')};
+// ================= 화면(메뉴바 · 상태바 · 드래그 선택) =================
+// ---- 메뉴바: 기존 버튼을 그대로 호출 ----
+const MENU={
+ file:[['파일 찾기','pick'],['샘플 불러오기','sample'],['업로드','up'],'-',['점검결과 엑셀 다운로드','dl'],'-',['초기화','rs']],
+ chk:[['심평원 점검','chk'],['저장','save'],'-',['마스터 미존재 수가 엑셀 출력','x2']],
+ tool:[['심평원 마스터 파일 선택','mpick'],['DB 직접 조회 열기/닫기','dbtog']],
+ help:[['사용 방법','help']]
+};
+function closeMenu(){$('mdd').style.display='none';document.querySelectorAll('.mn').forEach(x=>x.classList.remove('open'))}
+function openMenu(mn){
+ const items=MENU[mn.dataset.m];
+ $('mdd').innerHTML=items.map(it=>it==='-'?'<hr>':`<div data-do="${it[1]}" class="${it[1]!=='help'&&$(it[1]).disabled?'dis':''}">${it[0]}</div>`).join('');
+ $('mdd').style.left=mn.offsetLeft+'px';$('mdd').style.display='block';
+ document.querySelectorAll('.mn').forEach(x=>x.classList.toggle('open',x===mn));
+}
+$('menubar').onclick=e=>{
+ const mn=e.target.closest('.mn');
+ if(mn){mn.classList.contains('open')?closeMenu():openMenu(mn);return}
+ const it=e.target.closest('#mdd div[data-do]');
+ if(it){const id=it.dataset.do;closeMenu();
+  if(id==='help'){$('guide').style.display=$('guide').style.display==='block'?'none':'block'}
+  else if(!it.classList.contains('dis'))$(id).click()}
+};
+$('menubar').onmouseover=e=>{const mn=e.target.closest('.mn');if(mn&&$('mdd').style.display==='block'&&!mn.classList.contains('open'))openMenu(mn)};
+document.addEventListener('mousedown',e=>{if(!e.target.closest('#menubar'))closeMenu()});
+
+// ---- 하단 상태바 ----
+let chkTime=null;
+const fmtT=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+function updateStatus(){
+ $('sbFile').textContent=rows.length?$('fname').textContent:'파일 없음';
+ $('sbCnt').textContent=rows.length.toLocaleString()+'건';
+ if(!checked)chkTime=null;
+ $('sbChk').textContent=checked&&chkTime?'점검 완료 '+fmtT(chkTime):'점검 전';
+}
+const _render=render;
+render=function(){_render();updateStatus()};
+
+// ---- 표 드래그로 행 선택 (Ctrl+드래그: 기존 선택에 추가) ----
+let drag=null;
+function dragRange(){
+ const trs=[...$('tb').rows],a=trs.indexOf(drag.start),b=trs.indexOf(drag.cur);
+ return a<0||b<0?[]:trs.slice(Math.min(a,b),Math.max(a,b)+1);
+}
+function dragUpdate(){
+ if(!drag)return;
+ const el=document.elementFromPoint(drag.x,drag.y);let tr=el&&el.closest?el.closest('#tb tr'):null;
+ if(!tr){const t=$('tb').rows;if(!t.length)return;
+  const f=t[0].getBoundingClientRect(),l=t[t.length-1].getBoundingClientRect();
+  tr=drag.y<f.top?t[0]:(drag.y>l.bottom?t[t.length-1]:drag.cur)}
+ if(!tr.querySelector('.rc'))return;
+ if(tr!==drag.start&&!drag.moved){drag.moved=true;document.body.classList.add('dragging');const g=window.getSelection&&window.getSelection();if(g)g.removeAllRanges()}
+ drag.cur=tr;
+ const inR=new Set(dragRange());
+ $('tb').querySelectorAll('tr.dragsel').forEach(x=>{if(!inR.has(x))x.classList.remove('dragsel')});
+ if(drag.moved)inR.forEach(x=>x.classList.add('dragsel'));
+}
+function dragEnd(apply){
+ if(!drag)return;const d=drag;drag=null;clearInterval(d.timer);document.body.classList.remove('dragging');
+ const trs=[...$('tb').rows],a=trs.indexOf(d.start),b=trs.indexOf(d.cur);
+ $('tb').querySelectorAll('tr.dragsel').forEach(x=>x.classList.remove('dragsel'));
+ if(!apply||!d.moved||a<0||b<0)return;
+ const sel=trs.slice(Math.min(a,b),Math.max(a,b)+1).map(tr=>+tr.querySelector('.rc').dataset.i);
+ if(!d.add)rows.forEach(r=>{r.sel=false});
+ sel.forEach(i=>{rows[i].sel=true});
+ render();toast(`${sel.length.toLocaleString()}건 선택`+(d.add?' (추가)':''),'#334a8c');
+}
+$('tb').addEventListener('mousedown',e=>{
+ if(e.button!==0||e.target.closest('select,input,button,a'))return;
+ const tr=e.target.closest('tr');if(!tr||!tr.querySelector('.rc'))return;
+ drag={start:tr,cur:tr,moved:false,add:e.ctrlKey||e.metaKey,x:e.clientX,y:e.clientY,timer:setInterval(()=>{ // 위/아래 가장자리에서 자동 스크롤
+  if(!drag||!drag.moved)return;const g=$('gMain'),r=g.getBoundingClientRect();
+  if(drag.y<r.top+36)g.scrollTop-=20;else if(drag.y>r.bottom-36)g.scrollTop+=20;else return;dragUpdate()},40)};
+});
+document.addEventListener('mousemove',e=>{if(!drag)return;drag.x=e.clientX;drag.y=e.clientY;dragUpdate()});
+document.addEventListener('mouseup',()=>dragEnd(true));
+document.addEventListener('selectstart',e=>{if(drag&&drag.moved)e.preventDefault()});
+window.addEventListener('blur',()=>dragEnd(false));
+// ---- 서식 유지 출력 ----
+// 원본 .xlsx(zip)를 그대로 열어, 사용하는 탭의 시트 XML에 '최종 분류' 열만 추가한다.
+// 글꼴·색·열 너비·병합 셀·수식·다른 탭은 건드리지 않으므로 원본 그대로 유지된다.
+let origBuf=null,origIsXlsx=false; // 업로드한 원본 파일 (.xlsx 만 서식 유지 가능)
+const NS_MAIN='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const NS_REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+function saveBlob(blob,fn){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+async function exportKeepFormat(used){
+ if(!origBuf||!origIsXlsx||typeof JSZip==='undefined'||typeof XLSX==='undefined')return null;
+ const zip=await JSZip.loadAsync(origBuf);
+ const P=s=>new DOMParser().parseFromString(s,'application/xml');
+ const wbF=zip.file('xl/workbook.xml'),relF=zip.file('xl/_rels/workbook.xml.rels');if(!wbF||!relF)return null;
+ const wbx=P(await wbF.async('string')),rel=P(await relF.async('string'));
+ const relMap={};[...rel.getElementsByTagName('Relationship')].forEach(r=>relMap[r.getAttribute('Id')]=r.getAttribute('Target'));
+ const pathOf={};
+ [...wbx.getElementsByTagName('sheet')].forEach(sh=>{
+  const rid=sh.getAttributeNS(NS_REL,'id')||sh.getAttribute('r:id');let t=String(relMap[rid]||'').replace(/^\//,'');
+  if(t)pathOf[sh.getAttribute('name')]=t.startsWith('xl/')?t:'xl/'+t});
+ for(const s of used){
+  const path=pathOf[s.name],f=path&&zip.file(path);if(!f)return null;
+  const doc=P(await f.async('string'));if(doc.getElementsByTagName('parsererror').length)return null;
+  const sd=doc.getElementsByTagName('sheetData')[0];if(!sd)return null;
+  const rowEl={};[...sd.children].forEach(r=>{rowEl[r.getAttribute('r')]=r});
+  const newCol=s.c0+s.ncols,L=XLSX.utils.encode_col(newCol);let ok=true;
+  const put=(excelRow,text)=>{ // 행 끝에 셀 추가 (서식은 그 행의 마지막 셀 것을 복사)
+   const r=rowEl[excelRow];if(!r)return;
+   const cells=[...r.children].filter(c=>c.localName==='c'),last=cells[cells.length-1];
+   if(last){const lc=XLSX.utils.decode_cell(last.getAttribute('r')||'A1').c;if(lc>=newCol){ok=false;return}}
+   const c=doc.createElementNS(NS_MAIN,'c');c.setAttribute('r',L+excelRow);
+   if(last&&last.getAttribute('s'))c.setAttribute('s',last.getAttribute('s'));
+   c.setAttribute('t','inlineStr');
+   const is=doc.createElementNS(NS_MAIN,'is'),t=doc.createElementNS(NS_MAIN,'t');t.textContent=text;is.appendChild(t);c.appendChild(is);
+   r.appendChild(c);r.removeAttribute('spans')};
+  put(s.r0+s.hi+1,'최종 분류');
+  rows.forEach(r=>{if(r.sh===s&&r.fin)put(s.r0+r.ri+1,r.fin)});
+  if(!ok)return null;
+  const dim=doc.getElementsByTagName('dimension')[0];
+  if(dim&&dim.getAttribute('ref')){const rg=XLSX.utils.decode_range(dim.getAttribute('ref'));rg.e.c=Math.max(rg.e.c,newCol);dim.setAttribute('ref',XLSX.utils.encode_range(rg))}
+  // 새 열 너비 (기존 열 정의와 겹치거나 순서가 어긋나면 건드리지 않음)
+  let ce=doc.getElementsByTagName('cols')[0];const defs=ce?[...ce.children]:[];
+  const overlap=defs.some(c=>+c.getAttribute('min')<=newCol+1&&+c.getAttribute('max')>=newCol+1),later=defs.some(c=>+c.getAttribute('min')>newCol+1);
+  if(!overlap&&!later){if(!ce){ce=doc.createElementNS(NS_MAIN,'cols');sd.parentNode.insertBefore(ce,sd)}
+   const c=doc.createElementNS(NS_MAIN,'col');c.setAttribute('min',newCol+1);c.setAttribute('max',newCol+1);c.setAttribute('width','12');c.setAttribute('customWidth','1');ce.appendChild(c)}
+  // 브라우저에 따라 직렬화 결과에 XML 선언이 이미 포함되므로, 기존 선언을 제거한 뒤 하나만 붙인다 (선언이 중복되면 엑셀이 오류를 냄)
+  const xml=new XMLSerializer().serializeToString(doc).replace(/^﻿?\s*<\?xml[^>]*\?>\s*/,'');
+  zip.file(path,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+xml);
+ }
+ return zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function fsOpen(id,open){$(id).classList.toggle('closed',!open)}
+document.querySelectorAll('fieldset.fold>legend').forEach(l=>l.onclick=()=>l.parentNode.classList.toggle('closed'));
+$('tsTog').onclick=()=>{setOpen=!setOpen;fsOpen('fsUp',true);renderSettings()};
 function toast(m,c){const t=$('toast');t.textContent='💡 '+m;t.style.background=c;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600)}
 </script></body></html>

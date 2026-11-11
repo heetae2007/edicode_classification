@@ -1,0 +1,4 @@
+# .bat 은 반드시 CRLF 여야 cmd 에서 정상 동작 (줄바꿈이 바뀌면 goto 라벨이 깨짐)
+*.bat text eol=crlf
+# 라이브러리는 내용을 절대 변환하지 않음
+lib/*.js -text
