@@ -1,0 +1,307 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>EDI코드 분류 점검 - 예시</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:12px;color:#222;background:#e9ebef}
+.guide{max-width:1400px;margin:10px auto 8px;background:#fff;border-left:3px solid #334a8c;padding:8px 12px;line-height:1.7}
+.win{max-width:1400px;margin:0 auto 14px;background:#fff;border:1px solid #9aa0aa;position:relative}
+.top{background:#4a4f5c;color:#fff;font-weight:bold;font-style:italic;font-size:18px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center}
+.top span{font-style:normal;font-size:11px;font-weight:normal;border:1px solid #888;border-radius:12px;padding:2px 8px;background:#5d6270}
+.cond{background:#eef2f8;border:1px solid #d5dce8;margin:8px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.cond b{font-weight:bold}
+.grp{display:flex;align-items:center;gap:6px}
+.sep{width:1px;height:20px;background:#c9d1de}
+select,input[type=text]{font-family:inherit;font-size:12px;height:24px;border:1px solid #aab;padding:0 4px;background:#fff}
+.file{display:inline-flex;align-items:center;border:1px solid #aab;background:#fff;height:24px;min-width:220px;padding:0 6px;color:#888;overflow:hidden;white-space:nowrap}
+.btn{height:26px;padding:0 12px;border:none;border-radius:2px;color:#fff;font-family:inherit;font-size:12px;cursor:pointer;background:#5b6fb5}
+.btn.red{background:#ef5a4c}.btn.sky{background:#1d93c9}.btn.gray{background:#8a93a3}.btn.or{background:#f04a1e}
+.btn:disabled{background:#d5d8dd;color:#8a8f98;cursor:not-allowed}
+.req{color:#e02020}
+.sum{display:flex;gap:8px;align-items:center;margin:0 8px 8px;flex-wrap:wrap}
+.chip{border:1px solid #d5dce8;border-radius:14px;padding:3px 12px;cursor:pointer;background:#fff;user-select:none}
+.chip b{margin-left:4px}
+.chip.on{border-color:#334a8c;background:#334a8c;color:#fff}
+.chip.ok b{color:#2f7d3a}.chip.ng b{color:#c0392b}.chip.na b{color:#a86b00}.chip.un b{color:#6b4fbf}
+.chip.on b{color:#fff}
+.bulk{margin-left:auto;display:flex;gap:6px;align-items:center}
+.grid{margin:0 8px;border:1px solid #ccc;height:440px;overflow:auto}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th{background:#f0f1f3;font-weight:normal;padding:6px 4px;border-bottom:1px solid #ccc;border-right:1px solid #e3e3e3;white-space:nowrap;position:sticky;top:0;z-index:1}
+th.grpA{background:#e8edf6}th.grpH{background:#e6f3ee}th.grpF{background:#fff1d6;font-weight:bold}
+td{padding:5px 6px;border-bottom:1px solid #eee;border-right:1px solid #f2f2f2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.l{text-align:left}
+tr.ng td{background:#fff6f5}tr.na td{background:#fffaf0}
+tr.dirty td.fin{background:#fff3c4}
+.b{display:inline-block;padding:1px 8px;border-radius:2px;font-size:11px}
+.b-ok{background:#e3f1e5;color:#2f7d3a}.b-ng{background:#fde6e3;color:#c0392b}.b-na{background:#fff1d6;color:#a86b00}.b-wait{background:#eee;color:#777}
+.cls{font-weight:bold}.c약제{color:#2b55a8}.c행위{color:#2f7d3a}.c치료재료{color:#a85a00}
+td.fin select{width:100%;height:22px}
+td.fin select.empty{border-color:#e02020;color:#e02020}
+.empty-msg{padding:60px 0;color:#999;text-align:center}
+.foot{display:flex;justify-content:space-between;align-items:center;padding:8px;border-top:1px solid #ddd;margin-top:8px;background:#f5f5f5}
+.foot .r{display:flex;gap:4px;align-items:center}
+.saved{color:#2f7d3a;margin-right:8px}
+.toast{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);background:#5cad5c;color:#fff;padding:9px 20px;display:none;z-index:40;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.load{position:absolute;inset:0;background:rgba(255,255,255,.65);display:none;align-items:center;justify-content:center;z-index:30;font-weight:bold;color:#334a8c;font-size:13px}
+.legend{margin:6px 8px 0;color:#666;font-size:11px}
+</style></head><body>
+<div class="guide"><b>시연 방법</b> : ① <b>[샘플 불러오기]</b>를 누르거나 엑셀 파일 선택 후 열 지정(EDI코드 열 필수) → <b>[업로드]</b> → ② <b>[심평원 점검]</b> → AS-IS 분류와 심평원 분류의 일치 여부 표시 → ③ 행마다 <b>최종 분류</b> 콤보 선택 (불일치·미등재 건은 '선택' 상태로 시작) → ④ <b>[저장]</b> → ⑤ <b>[엑셀 다운로드]</b><br>
+※ 예시 화면의 심평원 분류는 가상 데이터입니다. 실제로는 심평원 행위·약제·치료재료 기준 마스터와 EDI코드를 대조합니다. AS-IS 분류 열을 지정하지 않으면 EDI코드 체계(9자리 숫자=약제 등)로 AS-IS 분류를 판정합니다.</div>
+<div class="win">
+<div class="top">EDI코드 분류 점검<span>닫기</span></div>
+
+<div class="cond">
+ <div class="grp"><b>파일</b><span class="file" id="fname">엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)</span><input type="file" id="fi" accept=".xlsx,.xls,.csv" hidden><button class="btn gray" id="pick">찾기</button><label><input type="checkbox" id="hdr" checked> 첫 행 제목</label></div>
+ <div class="sep"></div>
+ <div class="grp"><b>EDI코드<span class="req">*</span></b><select id="cE"></select><b>수가코드</b><select id="cS"></select><b>수가명</b><select id="cN"></select><b>AS-IS 분류</b><select id="cA"></select></div>
+ <div class="sep"></div>
+ <div class="grp"><button class="btn" id="up">업로드</button><button class="btn gray" id="sample">샘플 불러오기</button><button class="btn red" id="chk" disabled>심평원 점검</button></div>
+</div>
+
+<div class="cond">
+ <div class="grp"><b>심평원 수가마스터</b><span class="file" id="mfname">마스터 파일을 선택하세요 (.tsv.gz 권장 / .xlsx)</span><input type="file" id="mfi" accept=".xlsx,.xls,.csv,.gz" hidden><button class="btn gray" id="mpick">찾기</button><label><input type="checkbox" id="mhdr" checked> 첫 행 제목</label></div>
+ <div class="sep"></div>
+ <div class="grp"><b>EDI코드<span class="req">*</span></b><select id="mE"></select><b>명칭</b><select id="mN"></select><b>분류</b><select id="mC"></select><button class="btn" id="mup">마스터 적용</button><span id="mstat" style="color:#888">마스터 미적용</span></div>
+</div>
+
+<div class="sum" id="sum">
+ <span class="chip on" data-f="all">전체<b id="nAll">0</b></span>
+ <span class="chip ok" data-f="ok">일치<b id="nOk">0</b></span>
+ <span class="chip ng" data-f="ng">불일치<b id="nNg">0</b></span>
+ <span class="chip na" data-f="na">심평원 미등재<b id="nNa">0</b></span>
+ <span class="chip un" data-f="un">최종 미선택<b id="nUn">0</b></span>
+ <div class="bulk">선택 행 최종 분류 <select id="bv"><option value="">선택</option><option>약제</option><option>행위</option><option>치료재료</option></select><button class="btn" id="bApply">일괄 변경</button><button class="btn sky" id="bHira">불일치 → 심평원 분류 일괄 적용</button></div>
+</div>
+
+<div class="grid"><table>
+<colgroup><col style="width:34px"><col style="width:46px"><col style="width:110px"><col style="width:110px"><col><col style="width:90px"><col style="width:90px"><col style="width:220px"><col style="width:90px"><col style="width:120px"><col style="width:120px"></colgroup>
+<thead><tr><th><input type="checkbox" id="ca"></th><th>No</th><th class="grpA">수가코드</th><th class="grpA">EDI코드</th><th class="grpA">수가명</th><th class="grpA">AS-IS 분류</th><th class="grpH">심평원 분류</th><th class="grpH">심평원 명칭</th><th>점검결과</th><th class="grpF">최종 분류</th><th>비고</th></tr></thead>
+<tbody id="tb"><tr><td colspan="11" class="empty-msg">AS-IS 수가코드 엑셀을 업로드하세요.</td></tr></tbody></table></div>
+<div class="legend">파란 머리줄 = AS-IS 업로드 값 · 초록 머리줄 = 심평원 대조 결과 · 노란 칸 = 저장 전 변경된 최종 분류</div>
+
+<div class="foot"><div class="r"><button class="btn" id="x1" disabled>① 수가 분류 엑셀 출력</button><button class="btn red" id="x2" disabled>② 마스터 미존재 수가 엑셀 출력</button><button class="btn" id="dl" disabled>점검결과 엑셀 다운로드</button></div><div class="r"><span class="saved" id="sv"></span><button class="btn gray" id="rs">초기화</button><button class="btn or" id="save" disabled>저장</button></div></div>
+<div class="load" id="load">심평원 기준 데이터 대조 중...</div>
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const CL=['약제','행위','치료재료'];
+const COLS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+function optHtml(n,def,allowNone){return (allowNone?'<option value="">미지정</option>':'')+COLS.slice(0,Math.min(26,Math.max(n,4))).map(c=>`<option ${c===def?'selected':''}>${c}</option>`).join('')}
+function fillCols(n){
+  $('cE').innerHTML=optHtml(n,'A');$('cS').innerHTML=optHtml(n,'B',1);$('cN').innerHTML=optHtml(n,'C',1);$('cA').innerHTML=optHtml(n,'D',1);
+}
+function fillM(n){$('mE').innerHTML=optHtml(n,'A');$('mN').innerHTML=optHtml(n,'B',1);$('mC').innerHTML=optHtml(n,'',1)}
+fillCols(4);fillM(4);
+const nc=v=>String(v??'').trim().toUpperCase();
+function normCls(a){a=String(a??'').trim();
+ if(['약','약제','약/주사','의약품','약가'].includes(a))return '약제';
+ if(['치료재료대','치료재료','재료','재료대'].includes(a))return '치료재료';
+ if(['행위','수가','행위료'].includes(a))return '행위';
+ return a;}
+// ---- 심평원 수가마스터 (업로드 파일 또는 샘플) ----
+let masterMap=null,hdrRow=null,ncols=0;
+let masterFile=null,masterSig='',rowsVer=0; // 압축 마스터(.tsv.gz): 업로드 코드와 일치하는 행만 읽어 메모리에 올림
+const lookup=edi=>masterMap?masterMap.get(edi):undefined;
+
+// ---- 가상 심평원 기준 데이터 (예시) ----
+const HIRA={
+ 'M0111':['행위','단순처치[1일당]'],'AA154':['행위','초진진찰료-상급종합병원'],'C3711':['행위','일반혈액검사(CBC)'],'KK010':['행위','피하 또는 근육내 주사'],
+ 'HA341':['행위','두부 CT'],'B1030':['행위','혈액검사-당정량'],
+ '642200580':['약제','복합파자임이중정'],'641607630':['약제','펙수클루정40mg'],'645403280':['약제','에이펙스정100mg'],'643300040':['약제','가바렙캡슐300mg'],
+ '653700240':['약제','마그밀정500mg'],'641702920':['약제','놀텍정10밀리그램'],
+ 'J5083033':['치료재료','Foley Catheter 2-way'],'J1081001':['치료재료','일회용 주사기'],'J5410004':['치료재료','수술용 봉합사(흡수성)'],'B0101001':['치료재료','혈관용 카테터'],
+};
+// ---- 샘플 업로드 데이터 [EDI, 수가코드, 수가명, AS-IS분류] ----
+const SAMPLE=[
+ ['EDI코드','수가코드','수가명','AS-IS분류'],
+ ['M0111','M0111-5','단순처치[1일당]','행위'],['AA154','AA154','초진진찰료','행위'],['C3711','C3711','CBC','행위'],
+ ['642200580','PAZ','복합파자임이중정','약제'],['641607630','FEXU40','펙수클루정40mg','약제'],['645403280','APX100','에이펙스정 [100mg]','약제'],
+ ['J5083033','FOLEY2','폴리카테터 2way','치료재료'],['J1081001','SYR5','주사기 5cc','치료재료'],
+ ['KK010','KK010','근육주사','치료재료'],            // 불일치
+ ['643300040','GABA300','가바렙캡슐300mg','행위'],    // 불일치
+ ['J5410004','SUT01','흡수성 봉합사','행위'],          // 불일치
+ ['HA341','CT01','Brain CT','행위'],['653700240','MAG500','마그밀정','약제'],['641702920','NOL10','놀텍정10mg','약제'],
+ ['B1030','GLU','혈당검사','행위'],['B0101001','CATH01','혈관카테터','치료재료'],
+ ['ZZ0001','ZZ0001','병원자체 처치료','행위'],         // 미등재
+ ['699999999','OWN-DRUG','원내 조제약','약제'],         // 미등재
+];
+let rows=[],checked=false,filter='all',savedSnap=null;
+
+function guessAsis(edi){ // AS-IS 분류 열 미지정 시 코드 체계 판정
+ if(/^\d{9}$/.test(edi))return '약제';
+ if(/^[A-Z]\d{7}$/.test(edi))return '치료재료';
+ if(/^[A-Z]{1,2}\d{3,5}$/.test(edi))return '행위';
+ return '';
+}
+function load(aoa,name){
+ const ci=c=>c?COLS.indexOf(c):-1;
+ const iE=ci($('cE').value),iS=ci($('cS').value),iN=ci($('cN').value),iA=ci($('cA').value);
+ const data=$('hdr').checked?aoa.slice(1):aoa;
+ ncols=aoa.reduce((m,r)=>Math.max(m,(r||[]).length),0);hdrRow=$('hdr').checked?aoa[0]:null;
+ rows=data.filter(r=>r&&r.some(v=>v!==''&&v!=null)).map((r,i)=>{
+   const edi=nc(r[iE]);
+   let a=iA>=0?normCls(r[iA]):'';
+   return {raw:r,no:i+1,sg:iS>=0?String(r[iS]??''):'',edi,nm:iN>=0?String(r[iN]??''):'',asis:a||guessAsis(edi),asisGuess:!a,hira:null,hnm:'',res:'wait',fin:'',saved:''};
+ });
+ rowsVer++;checked=false;savedSnap=null;$('fname').textContent=name;$('fname').style.color='#222';
+ $('chk').disabled=!rows.length;$('save').disabled=true;$('dl').disabled=true;$('sv').textContent='';$('x1').disabled=$('x2').disabled=!rows.length;
+ render();toast(`${rows.length}건 업로드 완료 — [심평원 점검]을 눌러주세요.`,'#334a8c');
+}
+$('sample').onclick=()=>{fillCols(4);$('hdr').checked=true;
+ masterFile=null;masterMap=new Map(Object.entries(HIRA));$('mstat').textContent=`샘플 마스터(가상) ${masterMap.size}건 사용 중`;$('mstat').style.color='#2f7d3a';
+ load(SAMPLE,'AS-IS_수가코드_샘플.xlsx')};
+// ---- 마스터 파일 업로드 ----
+$('mpick').onclick=()=>$('mfi').click();
+$('mfi').onchange=()=>{const f=$('mfi').files[0];if(f){$('mfname').textContent=f.name;$('mfname').style.color='#222';
+ window._mgz=/\.gz$/i.test(f.name)?f:null;if(window._mgz){window._maoa=null;return}
+ if(typeof XLSX==='undefined')return;
+ const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  fillM((aoa[0]||[]).length);window._maoa=aoa};rd.readAsArrayBuffer(f)}};
+$('mup').onclick=async()=>{
+ if(window._mgz){ // 압축 마스터 파일(.tsv.gz)
+  masterFile=window._mgz;masterMap=null;masterSig='';
+  const h=await masterHead(masterFile);
+  if(!h){$('mstat').textContent='마스터 파일 형식 오류 (export_master.js로 만든 .tsv.gz인지 확인)';$('mstat').style.color='#c0392b';masterFile=null;return}
+  const days=Math.floor((Date.now()-new Date(h.date))/864e5);
+  $('mstat').textContent=`마스터 기준일 ${h.date} · ${(+h.count).toLocaleString()}건`+(days>35?` ⚠ ${days}일 경과 — 최신 파일 확인`:'');
+  $('mstat').style.color=days>35?'#c0392b':'#2f7d3a';
+  toast('마스터 파일을 지정했습니다. 점검 시 업로드 코드와 대조합니다.','#334a8c');
+  if(rows.length&&checked)$('chk').click();
+  return}
+ if(!window._maoa){toast('심평원 수가마스터 파일(.xlsx 또는 .tsv.gz)을 먼저 선택하세요.','#888');return}
+ const iE=COLS.indexOf($('mE').value),iN=$('mN').value?COLS.indexOf($('mN').value):-1,iC=$('mC').value?COLS.indexOf($('mC').value):-1;
+ const data=$('mhdr').checked?window._maoa.slice(1):window._maoa;const m=new Map();
+ data.forEach(r=>{const k=nc(r[iE]);if(k&&!m.has(k))m.set(k,[iC>=0?normCls(r[iC]):'',iN>=0?String(r[iN]??''):''])});
+ masterFile=null;masterMap=m;$('mstat').textContent=`마스터 ${m.size.toLocaleString()}건 적용${iC<0?' (분류 열 미지정: 존재 여부만 비교)':''}`;$('mstat').style.color='#2f7d3a';
+ if(rows.length&&checked){$('chk').click()}
+ toast(`심평원 마스터 ${m.size.toLocaleString()}건을 적용했습니다.`,'#334a8c')};
+$('pick').onclick=()=>$('fi').click();
+$('fi').onchange=()=>{const f=$('fi').files[0];if(f){$('fname').textContent=f.name;$('fname').style.color='#222'}};
+$('up').onclick=()=>{
+ const f=$('fi').files[0];if(!f){toast('파일을 선택하거나 [샘플 불러오기]를 이용하세요.','#888');return}
+ if(typeof XLSX==='undefined'){toast('엑셀 라이브러리를 불러오지 못했습니다. [샘플 불러오기]로 확인해 주세요.','#c0392b');return}
+ const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});fillCols((aoa[0]||[]).length);load(aoa,f.name)};rd.readAsArrayBuffer(f);
+};
+$('chk').onclick=async()=>{
+ if(!await buildMaster()){toast('심평원 수가마스터를 먼저 업로드(또는 샘플 불러오기)하세요.','#c0392b');return}
+ $('load').style.display='flex';
+ setTimeout(()=>{$('load').style.display='none';
+  rows.forEach(r=>{const h=lookup(r.edi);
+   if(!r.edi){r.hira='';r.hnm='';r.res='na';r.note='EDI코드 없음'}
+   else if(!h){r.hira='';r.hnm='';r.res='na';r.note='심평원 기준 미등재'}
+   else if(!h[0]){r.hira='';r.hnm=h[1];r.res='ok';r.note='마스터 분류 없음(존재만 확인)'}
+   else{r.hira=h[0];r.hnm=h[1];r.res=(r.asis===h[0])?'ok':'ng';r.note=r.res==='ng'?'AS-IS '+(r.asis||'-')+' → 심평원 '+h[0]:''}
+   if(r.asisGuess&&r.asis)r.note=(r.note?r.note+' · ':'')+'AS-IS 코드체계 판정';
+   r.fin=r.res==='ok'?(r.hira||r.asis):'';
+  });
+  checked=true;savedSnap=rows.map(r=>r.fin);savedSnap=null;$('save').disabled=false;$('dl').disabled=false;render();
+  const c=cnt();toast(`점검 완료 — 일치 ${c.ok}건 / 불일치 ${c.ng}건 / 미등재 ${c.na}건`,'#5cad5c');
+ },700);
+};
+function cnt(){return{all:rows.length,ok:rows.filter(r=>r.res==='ok').length,ng:rows.filter(r=>r.res==='ng').length,na:rows.filter(r=>r.res==='na').length,un:checked?rows.filter(r=>!r.fin).length:0}}
+const BADGE={ok:'<span class="b b-ok">일치</span>',ng:'<span class="b b-ng">불일치</span>',na:'<span class="b b-na">미등재</span>',wait:'<span class="b b-wait">점검 전</span>'};
+const cls=v=>v?`<span class="cls c${v}">${v}</span>`:'<span style="color:#bbb">-</span>';
+function render(){
+ const c=cnt();$('nAll').textContent=c.all;$('nOk').textContent=c.ok;$('nNg').textContent=c.ng;$('nNa').textContent=c.na;$('nUn').textContent=c.un;
+ const list=rows.filter(r=>filter==='all'||(filter==='un'?(checked&&!r.fin):r.res===filter));
+ if(!rows.length){$('tb').innerHTML='<tr><td colspan="11" class="empty-msg">AS-IS 수가코드 엑셀을 업로드하세요.</td></tr>';return}
+ if(!list.length){$('tb').innerHTML='<tr><td colspan="11" class="empty-msg">해당하는 행이 없습니다.</td></tr>';return}
+ $('tb').innerHTML=list.map(r=>{const i=rows.indexOf(r);const dirty=checked&&savedSnap&&savedSnap[i]!==r.fin;
+  return `<tr class="${r.res==='ng'?'ng':r.res==='na'?'na':''} ${dirty?'dirty':''}"><td><input type="checkbox" class="rc" data-i="${i}" ${r.sel?'checked':''}></td><td>${r.no}</td><td>${r.sg}</td><td>${r.edi}</td><td class="l" title="${r.nm}">${r.nm}</td>
+  <td>${cls(r.asis)}${r.asisGuess&&r.asis?'<sup style="color:#999">*</sup>':''}</td><td>${checked?cls(r.hira):''}</td><td class="l" title="${r.hnm}">${r.hnm}</td><td>${BADGE[r.res]}</td>
+  <td class="fin"><select class="fs ${checked&&!r.fin?'empty':''}" data-i="${i}" ${checked?'':'disabled'}><option value="">선택</option>${CL.map(o=>`<option ${r.fin===o?'selected':''}>${o}</option>`).join('')}</select></td>
+  <td class="l" title="${r.note||''}" style="color:#777;font-size:11px">${r.note||''}</td></tr>`}).join('');
+ document.querySelectorAll('.fs').forEach(s=>s.onchange=()=>{rows[s.dataset.i].fin=s.value;$('sv').textContent='';render()});
+ document.querySelectorAll('.rc').forEach(c=>c.onchange=()=>rows[c.dataset.i].sel=c.checked);
+}
+document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{filter=ch.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===ch));render()});
+$('ca').onchange=e=>{const vis=[...document.querySelectorAll('.rc')].map(c=>+c.dataset.i);vis.forEach(i=>rows[i].sel=e.target.checked);render()};
+$('bApply').onclick=()=>{if(!checked){toast('[심평원 점검] 후 사용할 수 있습니다.','#888');return}const v=$('bv').value;const t=rows.filter(r=>r.sel);
+ if(!t.length||!v){toast('행을 체크하고 변경할 분류를 선택하세요.','#888');return}t.forEach(r=>{r.fin=v;r.sel=false});$('ca').checked=false;$('sv').textContent='';render();toast(`${t.length}건 최종 분류를 '${v}'(으)로 변경했습니다.`,'#334a8c')};
+$('bHira').onclick=()=>{if(!checked){toast('[심평원 점검] 후 사용할 수 있습니다.','#888');return}const t=rows.filter(r=>r.res==='ng');t.forEach(r=>r.fin=r.hira);$('sv').textContent='';render();toast(`불일치 ${t.length}건에 심평원 분류를 적용했습니다.`,'#334a8c')};
+$('save').onclick=()=>{const un=rows.filter(r=>!r.fin).length;
+ if(un){toast(`최종 분류 미선택 ${un}건이 있습니다. 모두 선택 후 저장하세요.`,'#c0392b');filter='un';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='un'));render();return}
+ savedSnap=rows.map(r=>r.fin);const t=new Date();rows.forEach(r=>r.saved='Y');
+ $('sv').textContent=`저장 완료 ${t.toLocaleString('ko-KR',{hour12:false})}`;render();toast(`${rows.length}건 저장되었습니다.`,'#5cad5c')};
+$('rs').onclick=()=>{rows=[];checked=false;savedSnap=null;filter='all';$('fname').textContent='엑셀 파일을 선택하세요 (.xlsx, .xls, .csv)';$('fname').style.color='#888';$('fi').value='';
+ $('chk').disabled=$('save').disabled=$('dl').disabled=$('x1').disabled=$('x2').disabled=true;$('sv').textContent='';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));render()};
+$('dl').onclick=()=>{
+ const head=['No','수가코드','EDI코드','수가명','AS-IS 분류','심평원 분류','심평원 명칭','점검결과','최종 분류','비고','저장여부'];
+ const RES={ok:'일치',ng:'불일치',na:'미등재',wait:'점검 전'};
+ const body=rows.map(r=>[r.no,r.sg,r.edi,r.nm,r.asis,r.hira||'',r.hnm,RES[r.res],r.fin,r.note||'',savedSnap&&savedSnap[rows.indexOf(r)]===r.fin&&r.saved?'Y':'N']);
+ const fn='EDI코드_분류점검_'+new Date().toISOString().slice(0,10).replace(/-/g,'');
+ if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([head,...body]);ws['!cols']=[6,12,12,28,10,10,24,10,10,30,8].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'분류점검');XLSX.writeFile(wb,fn+'.xlsx')}
+ else{const csv='﻿'+[head,...body].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=fn+'.csv';a.click()}
+ toast('엑셀 파일을 다운로드했습니다.','#334a8c')};
+// ---- 압축 마스터(.tsv.gz) 읽기: 스트리밍 해제하며 업로드 코드와 일치하는 행만 보관 ----
+async function openLines(file,onLine){
+ const rd=file.stream().pipeThrough(new DecompressionStream('gzip')).pipeThrough(new TextDecoderStream()).getReader();
+ let buf='';
+ for(;;){const {value,done}=await rd.read();if(done)break;buf+=value;let s=0,p;
+  while((p=buf.indexOf('\n',s))>=0){if(onLine(buf.slice(s,p).replace(/\r$/,''))===false){rd.cancel();return}s=p+1}
+  buf=buf.slice(s)}
+ if(buf)onLine(buf);
+}
+async function masterHead(file){
+ if(typeof DecompressionStream==='undefined'){toast('이 브라우저는 압축 해제를 지원하지 않습니다. 최신 Chrome/Edge를 사용하세요.','#c0392b');return null}
+ let h=null;
+ try{await openLines(file,l=>{const a=l.split('\t');if(a[0]==='#MASTER')h={date:a[1],count:a[2]};return false})}catch(e){return null}
+ return h;
+}
+async function buildMaster(){
+ if(!masterFile)return !!masterMap;
+ const sig=masterFile.name+':'+masterFile.size+':'+rowsVer;
+ if(masterMap&&sig===masterSig)return true;
+ const need=new Set(rows.map(r=>r.edi).filter(Boolean));
+ const m=new Map(),ld=$('load'),old=ld.textContent;let n=0;
+ ld.style.display='flex';
+ try{
+  await openLines(masterFile,l=>{
+   if(!l||l[0]==='#')return;
+   const a=l.split('\t');n++;
+   if(need.has(a[0])&&!m.has(a[0]))m.set(a[0],[a[1]||'',a[2]||'']);
+   if(n%200000===0)ld.textContent=`마스터 파일 읽는 중... ${n.toLocaleString()}건`;
+  });
+ }catch(e){ld.style.display='none';ld.textContent=old;toast('마스터 파일을 읽지 못했습니다: '+e.message,'#c0392b');return false}
+ ld.style.display='none';ld.textContent=old;
+ masterMap=m;masterSig=sig;return true;
+}
+// ---- 기능1: 엣지 분류 기준으로 분류 후 엑셀 출력 ----
+// 우선순위: 사용자 최종 분류 > 심평원 마스터 분류 > 병원 제공 분류 > 코드체계 추정
+function classify(r){
+ if(r.fin)return [r.fin,'최종 분류(확정)'];
+ const h=lookup(r.edi);
+ if(h&&h[0])return [h[0],'심평원 마스터'];
+ if(r.asis&&!r.asisGuess)return [r.asis,'병원 제공 분류'];
+ const g=guessAsis(r.edi);if(g)return [g,'EDI코드 체계 추정'];
+ return ['미분류','분류 근거 없음'];
+}
+function saveXlsx(head,body,fn,sheet,widths){
+ if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([head,...body]);if(widths)ws['!cols']=widths.map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,fn+'.xlsx')}
+ else{const csv='﻿'+[head,...body].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=fn+'.csv';a.click()}
+}
+const today=()=>new Date().toISOString().slice(0,10).replace(/-/g,'');
+const origHead=()=>Array.from({length:ncols},(_,i)=>hdrRow&&hdrRow[i]!==undefined&&hdrRow[i]!==''?hdrRow[i]:'열 '+COLS[i]);
+const origRow=r=>Array.from({length:ncols},(_,i)=>r.raw[i]??'');
+$('x1').onclick=async()=>{
+ await buildMaster();
+ const body=rows.map(r=>{const [c,why]=classify(r);return [...origRow(r),c,why]});
+ const un=body.filter(b=>b[ncols]==='미분류').length;
+ saveXlsx([...origHead(),'엣지 분류','분류 근거'],body,'수가분류_'+today(),'수가분류');
+ toast(`분류 ${rows.length}건 출력 (미분류 ${un}건)`,un?'#a86b00':'#334a8c')};
+// ---- 기능2: 심평원 마스터에 없는 수가만 추출 ----
+$('x2').onclick=async()=>{
+ if(!await buildMaster()){toast('심평원 수가마스터를 먼저 업로드(또는 샘플 불러오기)하세요.','#c0392b');return}
+ const miss=rows.filter(r=>!r.edi||!lookup(r.edi));
+ if(!miss.length){toast('마스터에 없는 수가가 없습니다. (전체 '+rows.length+'건 존재)','#5cad5c');return}
+ saveXlsx([...origHead(),'사유'],miss.map(r=>[...origRow(r),r.edi?'심평원 마스터 미존재':'EDI코드 없음']),'심평원_미존재수가_'+today(),'미존재수가');
+ toast(`마스터 미존재 ${miss.length}건 / 전체 ${rows.length}건을 출력했습니다.`,'#334a8c')};
+function toast(m,c){const t=$('toast');t.textContent='💡 '+m;t.style.background=c;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600)}
+</script></body></html>
